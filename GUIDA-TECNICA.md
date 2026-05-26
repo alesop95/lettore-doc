@@ -1,8 +1,8 @@
-# Guida tecnica — lettore-doc
+# Guida tecnica - lettore-doc
 
 *Sistema di estrazione skill da documentazione locale e pubblicazione su sito web statico*
 
-Versione 2.0 — Maggio 2026
+Versione 2.0 - Maggio 2026
 
 ---
 
@@ -10,10 +10,10 @@ Versione 2.0 — Maggio 2026
 
 1. [Architettura generale](#1-architettura-generale)
 2. [Le sorgenti dati](#2-le-sorgenti-dati)
-3. [Il motore privato — lettore-doc](#3-il-motore-privato--lettore-doc)
+3. [Il motore privato - lettore-doc](#3-il-motore-privato--lettore-doc)
 4. [La pipeline del vault Obsidian privato](#4-la-pipeline-del-vault-obsidian-privato)
 5. [La pipeline di estrazione skill](#5-la-pipeline-di-estrazione-skill)
-6. [Il sito pubblico — skills-repo](#6-il-sito-pubblico--skills-repo)
+6. [Il sito pubblico - skills-repo](#6-il-sito-pubblico--skills-repo)
 7. [Il workflow operativo](#7-il-workflow-operativo)
 8. [Manutenzione e tuning](#8-manutenzione-e-tuning)
 9. [Estensioni future](#9-estensioni-future)
@@ -38,13 +38,13 @@ La separazione tra `_intermediate/` e `vault-output/` riflette lo stesso princip
 
 ### 1.3 Disclosure progressiva a tre livelli
 
-I documenti sorgente sono lunghi. Un `.docx` aziendale tipico vale circa 15-20k token. Una cartella di cento documenti vale quindi più o meno un milione e mezzo di token — una finestra di contesto da 200k token non basta a contenerne nemmeno un sesto. Caricarli tutti nel modello sarebbe non solo impossibile, ma sbagliato: l'ottanta per cento del contenuto serve come riferimento ricercabile, non come materiale di ragionamento attivo.
+I documenti sorgente sono lunghi. Un `.docx` aziendale tipico vale circa 15-20k token. Una cartella di cento documenti vale quindi più o meno un milione e mezzo di token - una finestra di contesto da 200k token non basta a contenerne nemmeno un sesto. Caricarli tutti nel modello sarebbe non solo impossibile, ma sbagliato: l'ottanta per cento del contenuto serve come riferimento ricercabile, non come materiale di ragionamento attivo.
 
 La soluzione è una disclosure progressiva su tre livelli:
 
-- **Livello 1 — Scheletro**: solo titolo, gerarchia di intestazioni e conteggi per sezione. Pesa tra 50 e 200 token per documento. Un'intera cartella di duecento file entra in meno di trentamila token.
-- **Livello 2 — Sezioni-preview**: aggiunge i primi 200 caratteri e gli ultimi 100 di ogni sezione, più le entità rilevate. Pesa tra 500 e 2.000 token per documento. Va caricato solo per i documenti su cui si vuole ragionare.
-- **Livello 3 — Contenuto completo di una sezione**: lettura puntuale, si attiva solo per rispondere a una domanda precisa su un documento specifico (`parse_docx.py full-section --file X --section "..."`)
+- **Livello 1 - Scheletro**: solo titolo, gerarchia di intestazioni e conteggi per sezione. Pesa tra 50 e 200 token per documento. Un'intera cartella di duecento file entra in meno di trentamila token.
+- **Livello 2 - Sezioni-preview**: aggiunge i primi 200 caratteri e gli ultimi 100 di ogni sezione, più le entità rilevate. Pesa tra 500 e 2.000 token per documento. Va caricato solo per i documenti su cui si vuole ragionare.
+- **Livello 3 - Contenuto completo di una sezione**: lettura puntuale, si attiva solo per rispondere a una domanda precisa su un documento specifico (`parse_docx.py full-section --file X --section "..."`)
 
 Il subagente Claude Code lavora prevalentemente al Livello 1, scende al Livello 2 per le sintesi narrative, e al Livello 3 solo su richiesta esplicita.
 
@@ -84,7 +84,7 @@ I formati processati: `.docx` (convertiti in Markdown tramite python-docx), `.tx
 
 ---
 
-## 3. Il motore privato — `lettore-doc`
+## 3. Il motore privato - `lettore-doc`
 
 ### 3.1 Struttura del repository
 
@@ -124,7 +124,7 @@ E:\lettore-doc\
 
 ### 3.2 Il subagente Claude Code
 
-`.claude/agents/lettore-documentazione.md` definisce un subagente con system prompt, tool consentiti (Read, Write, Edit, Bash, Glob, Grep), e modello (Sonnet). La regola principale: **non aprire mai un `.docx` con il tool Read direttamente** — su un `.docx` caricherebbe l'intera struttura XML producendo migliaia di token inutili. La via corretta è sempre usare gli script Python.
+`.claude/agents/lettore-documentazione.md` definisce un subagente con system prompt, tool consentiti (Read, Write, Edit, Bash, Glob, Grep), e modello (Sonnet). La regola principale: **non aprire mai un `.docx` con il tool Read direttamente** - su un `.docx` caricherebbe l'intera struttura XML producendo migliaia di token inutili. La via corretta è sempre usare gli script Python.
 
 ---
 
@@ -132,9 +132,9 @@ E:\lettore-doc\
 
 Orchestrata da `run_pipeline.ps1/.sh`. Genera il vault Obsidian locale, non produce output pubblici.
 
-### 4.1 Fase 1 — Parsing skeleton
+### 4.1 Fase 1 - Parsing skeleton
 
-`parse_docx.py skeleton` estrae la gerarchia di intestazioni da ogni `.docx`. Riconoscimento heading duplice: stile Word (`Heading 1`, `Titolo 1`) oppure pattern numerico in testa al paragrafo (`1.`, `1.1`, `1.1.1`) come fallback — necessario perché molti documenti aziendali italiani numerano manualmente senza usare gli stili nativi.
+`parse_docx.py skeleton` estrae la gerarchia di intestazioni da ogni `.docx`. Riconoscimento heading duplice: stile Word (`Heading 1`, `Titolo 1`) oppure pattern numerico in testa al paragrafo (`1.`, `1.1`, `1.1.1`) come fallback - necessario perché molti documenti aziendali italiani numerano manualmente senza usare gli stili nativi.
 
 **Parallelizzazione**: `concurrent.futures.ProcessPoolExecutor` con worker = min(CPU, 8). Su macchina a 8 core: 200 documenti scheletrati in <30 secondi.
 
@@ -142,13 +142,13 @@ Orchestrata da `run_pipeline.ps1/.sh`. Genera il vault Obsidian locale, non prod
 
 Output: `_intermediate/structure.json` (~4-5 MB anche per 200 documenti).
 
-### 4.2 Fase 2 — Sections-preview
+### 4.2 Fase 2 - Sections-preview
 
 `parse_docx.py sections-preview` scrive un JSON per documento in `_intermediate/sections/<safe-stem>.json`, con per ogni sezione: incipit (200 char), chiusura (100 char), tabelle estratte come lista di dict, flag `has_images`.
 
 La separazione in due fasi (scheletro + preview) ottimizza il primo accesso: il subagente vede lo scheletro dell'intera cartella prima di decidere dove scendere al Livello 2.
 
-### 4.3 Fase 3 — Estrazione entità
+### 4.3 Fase 3 - Estrazione entità
 
 `extract_entities.py` applica regex calibrate per l'italiano tecnico-amministrativo. Non usa ML: è euristica deterministica.
 
@@ -173,7 +173,7 @@ La `ACRONYM_STOPLIST` esclude acronimi tecnici comuni (PDF, API, CSV, XML, SSL, 
 
 Output `_intermediate/entities.json`.
 
-### 4.4 Fase 4 — Grafo di conoscenza
+### 4.4 Fase 4 - Grafo di conoscenza
 
 `build_knowledge_graph.py` calcola tutti gli archi candidati tra documenti. Formula del peso:
 
@@ -189,11 +189,11 @@ peso(A,B) = W_JACCARD × Jaccard(entità_A, entità_B)
 
 | Parametro | Valore | Motivazione |
 |-----------|--------|-------------|
-| `W_JACCARD` | 0.40 | Sovrapposizione entità — segnale semantico più affidabile |
-| `W_EXPLICIT_REF` | 0.30 | Riferimento esplicito — specifico ma raro; saturato a 3 |
+| `W_JACCARD` | 0.40 | Sovrapposizione entità - segnale semantico più affidabile |
+| `W_EXPLICIT_REF` | 0.30 | Riferimento esplicito - specifico ma raro; saturato a 3 |
 | `W_FOLDER` | 0.10 | Stessa cartella (1.0) / cartella padre comune (0.5) |
 | `W_TEMPORAL` | 0.10 | 1.0 se ≤7 gg, lineare fino a 0 a 180 gg |
-| `W_TITLE_SIM` | 0.10 | Jaccard token del nome file — cattura serie temporali |
+| `W_TITLE_SIM` | 0.10 | Jaccard token del nome file - cattura serie temporali |
 
 Il **Jaccard sulle entità** usa le categorie ACRONYM, COMPANY, PROPER_NOUN, PROJECT_CODE. Il **Jaccard del titolo** esclude token come "docx", "final", "copia", "v", "rev".
 
@@ -212,7 +212,7 @@ Il **Jaccard sulle entità** usa le categorie ACRONYM, COMPANY, PROPER_NOUN, PRO
 
 Output `_intermediate/graph.json`: archi, top-K vicini per nodo, hub, documenti isolati, clustering naive per entità rappresentativa.
 
-### 4.5 Fase 5 — Generazione del vault
+### 4.5 Fase 5 - Generazione del vault
 
 `generate_vault.py` produce un file `.md` per ogni documento in `vault-output/`.
 
@@ -265,11 +265,11 @@ Estrae skill dai documenti sorgente e aggiorna `skills-repo`.
 Skill registrata in Claude Code. Si lancia con `/graphify .` dalla cartella sorgente. Usa il modello attivo nella sessione per costruire un grafo semantico.
 
 **Output in `graphify-out/`:**
-- `graph.json` — nodi (`label`, `id`, `community`, `norm_label`, `source_file`, `file_type`), archi (`source`, `target`, `relation`, `confidence`, `confidence_score`, `weight`), iperedges (relazioni di gruppo)
-- `graph.html` — visualizzazione interattiva
-- `GRAPH_REPORT.md` — god nodes, surprising connections, community labels, suggested questions
-- `cost.json` — token consumati
-- `manifest.json` — hash per `--update` incrementale
+- `graph.json` - nodi (`label`, `id`, `community`, `norm_label`, `source_file`, `file_type`), archi (`source`, `target`, `relation`, `confidence`, `confidence_score`, `weight`), iperedges (relazioni di gruppo)
+- `graph.html` - visualizzazione interattiva
+- `GRAPH_REPORT.md` - god nodes, surprising connections, community labels, suggested questions
+- `cost.json` - token consumati
+- `manifest.json` - hash per `--update` incrementale
 
 **Stima token**: 39 file / 126k parole → 113k input + 29k output (~3.700 token/file). Proiezione 200 documenti: ~580k token. La modalità `--update` processa solo i file modificati dall'ultimo run.
 
@@ -331,13 +331,13 @@ Testo preview anonimizzato...
 *Technology stack: to be enriched from source document.*
 ```
 
-Il commento HTML è l'**ID di idempotenza** (SHA256 breve di `node_id + capability_slug`). Lo script controlla prima se l'ID esiste già — se sì, salta. Eseguibile più volte senza duplicare contenuto.
+Il commento HTML è l'**ID di idempotenza** (SHA256 breve di `node_id + capability_slug`). Lo script controlla prima se l'ID esiste già - se sì, salta. Eseguibile più volte senza duplicare contenuto.
 
 **Per le new Capability**: crea il `.md` con schema a quattro H2 e stampa la riga da aggiungere manualmente al `mkdocs.yml` (non automatizzato per scelta: ogni modifica della navigazione pubblica va approvata consapevolmente).
 
 ---
 
-## 6. Il sito pubblico — `skills-repo`
+## 6. Il sito pubblico - `skills-repo`
 
 ### 6.1 Struttura
 
@@ -368,7 +368,7 @@ Ogni Capability page ha quattro H2 in ordine invariato:
 
 ### 6.3 GitHub Actions e deploy
 
-`git push` su `main` → build `mkdocs build --strict` → deploy Pages (~1 minuto). Il flag `--strict` fa fallire la build su link rotti — safety net voluto.
+`git push` su `main` → build `mkdocs build --strict` → deploy Pages (~1 minuto). Il flag `--strict` fa fallire la build su link rotti - safety net voluto.
 
 ### 6.4 Knowledge Graph del portfolio
 
@@ -397,13 +397,13 @@ Aprire `docs/` come vault Obsidian (`File → Open folder as vault`). `.obsidian
 ### 7.1 Ciclo di aggiornamento tassonomia
 
 ```powershell
-# PASSO 1 — graphify (consuma token, ~3-20 min)
+# PASSO 1 - graphify (consuma token, ~3-20 min)
 cd <cartella-sorgente>
 claude
 /model claude-sonnet-4-5
 /graphify .
 
-# PASSO 2 — taxonomy index + enrich (~30 sec, offline)
+# PASSO 2 - taxonomy index + enrich (~30 sec, offline)
 cd E:\lettore-doc
 .\.venv\Scripts\python.exe scripts\generate_taxonomy_index.py `
   --skills-repo "J:\...\skills-repo" --output _intermediate\taxonomy_index.json
@@ -412,26 +412,26 @@ cd E:\lettore-doc
   --graph "<sorgente>\graphify-out\graph.json" --workdir "<sorgente>" `
   --output _intermediate\enriched_graph.json
 
-# PASSO 3 — classifica (~5 sec, offline)
+# PASSO 3 - classifica (~5 sec, offline)
 .\.venv\Scripts\python.exe scripts\map_to_taxonomy.py `
   --enriched-graph _intermediate\enriched_graph.json `
   --taxonomy _intermediate\taxonomy_index.json `
   --output-md _intermediate\taxonomy_diff.md `
   --output-json _intermediate\taxonomy_diff.json
 
-# PASSO 4 — revisione manuale
+# PASSO 4 - revisione manuale
 notepad _intermediate\taxonomy_diff.md
 
-# PASSO 5 — apply (~5 sec, offline)
+# PASSO 5 - apply (~5 sec, offline)
 .\.venv\Scripts\python.exe scripts\export_to_taxonomy.py `
   --diff-json _intermediate\taxonomy_diff.json `
   --skills-repo "J:\...\skills-repo" --dry-run
 # ...poi --apply dopo verifica
 
-# PASSO 6 — deploy (~1 min)
+# PASSO 6 - deploy (~1 min)
 cd "J:\...\skills-repo"
 git add docs\
-git commit -m "Update taxonomy — $(Get-Date -Format 'yyyy-MM-dd')"
+git commit -m "Update taxonomy - $(Get-Date -Format 'yyyy-MM-dd')"
 git push
 ```
 
@@ -466,7 +466,7 @@ THRESHOLD_DOMAIN = 0.08   # abbassare a 0.06 se troppo pochi new_capability
 MIN_SCORE_REPORT = 0.01   # sotto questa → non classificato
 ```
 
-Dopo modifica, rilanciare solo `map_to_taxonomy.py` — `enriched_graph.json` rimane valido.
+Dopo modifica, rilanciare solo `map_to_taxonomy.py` - `enriched_graph.json` rimane valido.
 
 ### 8.2 Pesi del grafo (`build_knowledge_graph.py`)
 

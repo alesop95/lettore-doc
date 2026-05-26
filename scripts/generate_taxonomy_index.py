@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-generate_taxonomy_index.py — Genera taxonomy_index.json dal mkdocs.yml di skills-repo.
+generate_taxonomy_index.py - Genera taxonomy_index.json dal mkdocs.yml di skills-repo.
 
 Legge la struttura nav del mkdocs.yml, per ogni Capability page legge le sezioni
 "Technologies & tools" e "Overview" ed estrae keyword significative.

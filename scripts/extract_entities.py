@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-extract_entities.py — Estrazione entita da documenti italiani.
+extract_entities.py - Estrazione entita da documenti italiani.
 
 Input: JSON prodotti da parse_docx.py (sections-preview o full).
 Output: entities.json con entita per documento e classifica globale.

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-export_to_taxonomy.py — Applica taxonomy_diff.json alle Capability pages di skills-repo.
+export_to_taxonomy.py - Applica taxonomy_diff.json alle Capability pages di skills-repo.
 
 Modalità --dry-run (default): mostra cosa verrebbe modificato senza toccare nulla.
 Modalità --apply:             scrive effettivamente i file in skills-repo.
@@ -87,7 +87,7 @@ def build_evidence_block(
         for original, placeholder in sorted(anon_map.items(), key=lambda x: -len(x[0])):
             preview = re.sub(re.escape(original), placeholder, preview)
 
-    src_basename = Path(src_file).name if src_file else "—"
+    src_basename = Path(src_file).name if src_file else "-"
     community_line = (
         f"- **Graph community**: {community_label}\n"
         if community_label
@@ -364,7 +364,7 @@ def main() -> None:
             print(f"    [dry-run] avrebbe creato: {new_md_path}", file=sys.stderr)
 
     # -----------------------------------------------------------------------
-    # Processa NEW DOMAIN (solo stampa — troppo invasivo per automatizzare)
+    # Processa NEW DOMAIN (solo stampa - troppo invasivo per automatizzare)
     # -----------------------------------------------------------------------
     new_doms = diff.get("new_domain", [])
     if new_doms:
@@ -372,7 +372,7 @@ def main() -> None:
               file=sys.stderr)
         for nd in new_doms:
             print(f"  {nd.get('suggested_domain', '?')} "
-                  f"({len(nd.get('nodes', []))} nodi) — valuta manualmente",
+                  f"({len(nd.get('nodes', []))} nodi) - valuta manualmente",
                   file=sys.stderr)
 
     # -----------------------------------------------------------------------

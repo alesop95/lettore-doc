@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-map_to_taxonomy.py — Classifica i nodi di enriched_graph.json verso la tassonomia.
+map_to_taxonomy.py - Classifica i nodi di enriched_graph.json verso la tassonomia.
 
 Per ogni nodo e hyperedge del grafo calcola il match score verso ogni Capability
 della tassonomia e li classifica in:
@@ -327,7 +327,7 @@ def render_markdown(results: dict, source_graph: str) -> str:
 
     # ---- FIT ----
     lines += [
-        f"## ✅ Fit — Capability esistenti da aggiornare",
+        f"## ✅ Fit - Capability esistenti da aggiornare",
         f"",
         f"> Questi nodi vanno aggiunti alla sezione **Projects & evidence**",
         f"> della Capability corrispondente in `skills-repo`.",

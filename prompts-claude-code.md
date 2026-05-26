@@ -1,4 +1,4 @@
-# Prompt template — operazioni ricorrenti con Claude Code
+# Prompt template - operazioni ricorrenti con Claude Code
 
 Usare questi prompt copia-incollando direttamente nel terminale Claude Code.
 Ogni prompt è ottimizzato per minimizzare i token consumati e massimizzare
@@ -98,7 +98,7 @@ Leggi il file docs/<domain>/<capability>.md.
 Aggiorna le sezioni come segue:
 - "## Overview": [descrizione delle modifiche o del testo da inserire]
 - "## Technologies & tools": aggiungi [tecnologia] con la notazione:
-  - **<Nome>** (<versione>) — <breve qualificazione>
+  - **<Nome>** (<versione>) - <breve qualificazione>
 - "## Responsibilities & operational scope": aggiungi il punto:
   - <nuova responsabilità>
 

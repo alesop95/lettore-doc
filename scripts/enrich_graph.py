@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-enrich_graph.py — Arricchisce il graph.json prodotto da graphify con entità
+enrich_graph.py - Arricchisce il graph.json prodotto da graphify con entità
 italiane estratte dai file sorgente, e costruisce una mappa di anonimizzazione.
 
 Input:

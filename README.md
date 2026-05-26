@@ -102,12 +102,12 @@ sources:
 
 ---
 
-## Uso — Pipeline di estrazione skill (aggiornamento tassonomia)
+## Uso - Pipeline di estrazione skill (aggiornamento tassonomia)
 
 Questa pipeline estrae skill dai documenti sorgente e aggiorna `skills-repo`
 (il sito pubblico su GitHub Pages).
 
-### Passo 1 — graphify sulla sorgente (consuma token Claude Code)
+### Passo 1 - graphify sulla sorgente (consuma token Claude Code)
 
 ```powershell
 cd <cartella-sorgente>
@@ -130,7 +130,7 @@ Per aggiornamenti incrementali (solo file modificati):
 /graphify . --update
 ```
 
-### Passo 2 — Genera taxonomy index
+### Passo 2 - Genera taxonomy index
 
 ```powershell
 cd E:\lettore-doc
@@ -139,7 +139,7 @@ cd E:\lettore-doc
   --output _intermediate\taxonomy_index.json
 ```
 
-### Passo 3 — Arricchisci il grafo
+### Passo 3 - Arricchisci il grafo
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\enrich_graph.py `
@@ -148,7 +148,7 @@ cd E:\lettore-doc
   --output  _intermediate\enriched_graph.json
 ```
 
-### Passo 4 — Classifica i nodi
+### Passo 4 - Classifica i nodi
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\map_to_taxonomy.py `
@@ -158,7 +158,7 @@ cd E:\lettore-doc
   --output-json    _intermediate\taxonomy_diff.json
 ```
 
-### Passo 5 — Revisionare il diff
+### Passo 5 - Revisionare il diff
 
 ```powershell
 notepad _intermediate\taxonomy_diff.md
@@ -167,7 +167,7 @@ notepad _intermediate\taxonomy_diff.md
 Rimuovere i falsi positivi dalla sezione "Fit". Accettare o rinominare le
 "New Capabilities" proposte. Eliminare le "New Domains" non rilevanti.
 
-### Passo 6 — Applicare (dry-run poi apply)
+### Passo 6 - Applicare (dry-run poi apply)
 
 ```powershell
 # Verifica senza modifiche
@@ -181,12 +181,12 @@ Rimuovere i falsi positivi dalla sezione "Fit". Accettare o rinominare le
   --skills-repo "J:\...\skills-repo" --apply
 ```
 
-### Passo 7 — Commit e push
+### Passo 7 - Commit e push
 
 ```powershell
 cd "J:\...\skills-repo"
 git add docs\
-git commit -m "Update taxonomy — $(Get-Date -Format 'yyyy-MM-dd')"
+git commit -m "Update taxonomy - $(Get-Date -Format 'yyyy-MM-dd')"
 git push
 ```
 
@@ -195,7 +195,7 @@ in ~1 minuto a https://alesop95.github.io/skills/.
 
 ---
 
-## Uso — Vault Obsidian privato
+## Uso - Vault Obsidian privato
 
 Genera un vault Obsidian navigabile con grafo di relazioni dai documenti sorgente.
 Output in `vault-output/` (non pubblicato online).
@@ -222,7 +222,7 @@ Salva ogni sintesi in _intermediate/summaries/ con il safe-stem corrispondente.
 
 ---
 
-## Uso — Knowledge Graph del portfolio
+## Uso - Knowledge Graph del portfolio
 
 Genera una visualizzazione interattiva della tassonomia come grafo navigabile
 da aggiungere al sito pubblico (opzionale, consuma token).
@@ -233,7 +233,7 @@ claude
 /graphify docs/
 ```
 
-Prima esecuzione — sposta l'output dentro `docs/`:
+Prima esecuzione - sposta l'output dentro `docs/`:
 
 ```powershell
 Move-Item graphify-out docs\graphify-out
@@ -273,7 +273,7 @@ policy, da PowerShell come admin:
 Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 ```
 
-**macOS — permessi script .sh**:
+**macOS - permessi script .sh**:
 
 ```bash
 chmod +x setup.sh run_pipeline.sh

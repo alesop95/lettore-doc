@@ -1,4 +1,4 @@
-# lettore-doc — Claude Code instructions
+# lettore-doc - Claude Code instructions
 
 Sei nella cartella **privata** `E:\lettore-doc`. Questo repo non va mai online.
 Il repo pubblico è in `$env:LETTERDOC_SKILLS_REPO` (GitHub: alesop95/skills).
@@ -55,7 +55,7 @@ Se vuote, settale (persistenti per l'utente):
 ## Pipeline di estrazione skill (ordine corretto)
 
 ```powershell
-# 1. taxonomy index — legge skills_repo da sources.yml automaticamente
+# 1. taxonomy index - legge skills_repo da sources.yml automaticamente
 .\.venv\Scripts\python.exe scripts\generate_taxonomy_index.py `
   --output _intermediate\taxonomy_index.json
 
@@ -106,7 +106,7 @@ Se vuote, settale (persistenti per l'utente):
 
 ## Subagente disponibile
 
-`.claude\agents\lettore-documentazione.md` — specializzato per documentazione
+`.claude\agents\lettore-documentazione.md` - specializzato per documentazione
 aziendale italiana. Invocalo con:
 ```
 Usa il subagente lettore-documentazione per [task].
@@ -116,7 +116,7 @@ Usa il subagente lettore-documentazione per [task].
 
 ## Cosa NON è in questo repo (gitignored)
 
-- `.venv\` — ricrea con `setup.ps1`
-- `_intermediate\` — rigenera dalla pipeline
-- `vault-output\` — rigenera con `run_pipeline.ps1 -OnlyVault`
-- `.env` — i tuoi valori locali delle variabili (mai committare)
+- `.venv\` - ricrea con `setup.ps1`
+- `_intermediate\` - rigenera dalla pipeline
+- `vault-output\` - rigenera con `run_pipeline.ps1 -OnlyVault`
+- `.env` - i tuoi valori locali delle variabili (mai committare)
