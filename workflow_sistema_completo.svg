@@ -1,0 +1,172 @@
+<svg width="100%" viewBox="0 0 686 1050" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>Workflow sistema completo: lettore-doc + skills-repo</title>
+<desc>Flusso operativo completo: sorgenti → graphify → pipeline lettore-doc → skills-repo pubblico</desc>
+<defs>
+<marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<rect x="0" y="0" width="686" height="1050" fill="#1E1E1C"/>
+
+<!-- ═══ SORGENTI ═══ -->
+<rect x="20" y="30" width="180" height="214" rx="12" fill="#3D3D3A" stroke="#B4B2A9" stroke-width="0.5"/>
+<text x="110" y="56" text-anchor="middle" fill="#D3D1C7" font-size="14" font-weight="500" font-family="sans-serif">Sorgenti</text>
+<rect x="32" y="68" width="156" height="32" rx="5" fill="#444441" stroke="#888780" stroke-width="0.5"/>
+<text x="110" y="88" text-anchor="middle" fill="#B4B2A9" font-size="11" font-family="sans-serif">OneDrive / Documenti-IT</text>
+<rect x="32" y="108" width="156" height="32" rx="5" fill="#444441" stroke="#888780" stroke-width="0.5"/>
+<text x="110" y="128" text-anchor="middle" fill="#B4B2A9" font-size="11" font-family="sans-serif">SSD esterno (5+ path)</text>
+<rect x="32" y="148" width="156" height="32" rx="5" fill="#444441" stroke="#888780" stroke-width="0.5"/>
+<text x="110" y="168" text-anchor="middle" fill="#B4B2A9" font-size="11" font-family="sans-serif">Google Drive Portfolio</text>
+<rect x="32" y="188" width="156" height="28" rx="5" fill="#444441" stroke="#5F5E5A" stroke-width="0.5"/>
+<text x="110" y="206" text-anchor="middle" fill="#888780" font-size="11" font-family="sans-serif">.docx  .txt  .md  .png</text>
+
+<!-- freccia sorgenti → graphify -->
+<line x1="200" y1="128" x2="237" y2="128" stroke="#9C9A92" stroke-width="1.5" fill="none" marker-end="url(#a)"/>
+
+<!-- ═══ GRAPHIFY ═══ -->
+<rect x="268" y="68" width="116" height="19" rx="9" fill="#F5C4B3" stroke="#F0997B" stroke-width="0.5"/>
+<text x="326" y="81" text-anchor="middle" fill="#4A1B0C" font-size="10" font-family="sans-serif">consuma token Claude Code</text>
+<text x="325" y="97" text-anchor="middle" fill="#888780" font-size="11" font-family="sans-serif">per ogni sorgente</text>
+<rect x="239" y="100" width="172" height="60" rx="8" fill="#085041" stroke="#5DCAA5" stroke-width="0.5"/>
+<text x="325" y="125" text-anchor="middle" fill="#9FE1CB" font-size="14" font-weight="500" font-family="sans-serif">graphify</text>
+<text x="325" y="143" text-anchor="middle" fill="#5DCAA5" font-size="11" font-family="sans-serif">/graphify . (Claude Code)</text>
+
+<!-- freccia graphify → graph.json -->
+<line x1="411" y1="130" x2="449" y2="130" stroke="#9C9A92" stroke-width="1.5" fill="none" marker-end="url(#a)"/>
+
+<!-- graph.json -->
+<rect x="451" y="107" width="150" height="46" rx="6" fill="#444441" stroke="#B4B2A9" stroke-width="0.5"/>
+<text x="526" y="127" text-anchor="middle" fill="#888780" font-size="11" font-family="sans-serif">graphify-out/</text>
+<text x="526" y="145" text-anchor="middle" fill="#D3D1C7" font-size="12" font-weight="500" font-family="sans-serif">graph.json</text>
+
+<!-- freccia graph.json → enrich_graph  (scende sotto sorgenti, poi va a sinistra) -->
+<path d="M526,153 L526,246 L192,246 L192,283" stroke="#9C9A92" stroke-width="1.5" fill="none" marker-end="url(#a)"/>
+
+<!-- ═══ CONFINE LETTORE-DOC ═══ -->
+<rect x="12" y="270" width="662" height="466" rx="16" fill="none" stroke="#B4B2A9" stroke-width="1" stroke-dasharray="6 4" opacity="0.3"/>
+<text x="24" y="290" fill="#5F5E5A" font-size="11" font-family="sans-serif">E:\lettore-doc  —  repo privato locale</text>
+
+<!-- badge offline (spostato a destra per non sovrapporsi alla freccia x=192) -->
+<rect x="220" y="257" width="136" height="18" rx="9" fill="#EAF3DE" stroke="#97C459" stroke-width="0.5"/>
+<text x="288" y="270" text-anchor="middle" fill="#173404" font-size="10" font-family="sans-serif">offline, nessun token</text>
+
+<!-- enrich_graph.py -->
+<rect x="32" y="283" width="160" height="56" rx="8" fill="#3C3489" stroke="#AFA9EC" stroke-width="0.5"/>
+<text x="112" y="307" text-anchor="middle" fill="#CECBF6" font-size="13" font-weight="500" font-family="sans-serif">enrich_graph.py</text>
+<text x="112" y="325" text-anchor="middle" fill="#AFA9EC" font-size="11" font-family="sans-serif">regex italiane + anon</text>
+
+<!-- freccia enrich → enriched_graph -->
+<line x1="192" y1="311" x2="226" y2="311" stroke="#9C9A92" stroke-width="1.5" fill="none" marker-end="url(#a)"/>
+
+<!-- enriched_graph.json -->
+<rect x="228" y="289" width="162" height="44" rx="6" fill="#444441" stroke="#B4B2A9" stroke-width="0.5"/>
+<text x="309" y="308" text-anchor="middle" fill="#B4B2A9" font-size="11" font-family="sans-serif">enriched_graph.json</text>
+<text x="309" y="323" text-anchor="middle" fill="#888780" font-size="10" font-family="sans-serif">+ anonymization_map</text>
+
+<!-- generate_taxonomy_index.py -->
+<rect x="418" y="283" width="242" height="56" rx="8" fill="#3C3489" stroke="#AFA9EC" stroke-width="0.5"/>
+<text x="539" y="304" text-anchor="middle" fill="#CECBF6" font-size="12" font-weight="500" font-family="sans-serif">generate_taxonomy_index.py</text>
+<text x="539" y="322" text-anchor="middle" fill="#AFA9EC" font-size="10" font-family="sans-serif">legge mkdocs.yml di skills-repo</text>
+
+<!-- badge "legge da skills-repo" -->
+<rect x="454" y="347" width="170" height="17" rx="8" fill="#E6F1FB" stroke="#378ADD" stroke-width="0.5"/>
+<text x="539" y="359" text-anchor="middle" fill="#042C53" font-size="10" font-family="sans-serif">↑ legge da skills-repo</text>
+
+<!-- freccia generate → taxonomy_index -->
+<line x1="539" y1="339" x2="539" y2="371" stroke="#9C9A92" stroke-width="1.5" fill="none" marker-end="url(#a)"/>
+
+<!-- taxonomy_index.json -->
+<rect x="418" y="373" width="242" height="30" rx="6" fill="#444441" stroke="#B4B2A9" stroke-width="0.5"/>
+<text x="539" y="393" text-anchor="middle" fill="#D3D1C7" font-size="11" font-family="sans-serif">taxonomy_index.json</text>
+
+<!-- freccia enriched → map -->
+<line x1="309" y1="333" x2="309" y2="410" stroke="#9C9A92" stroke-width="1.5" fill="none" marker-end="url(#a)"/>
+<!-- freccia taxonomy_index → map (diagonale) -->
+<path d="M418,388 L372,422" stroke="#9C9A92" stroke-width="1.5" fill="none" marker-end="url(#a)"/>
+
+<!-- map_to_taxonomy.py -->
+<rect x="200" y="411" width="162" height="56" rx="8" fill="#3C3489" stroke="#AFA9EC" stroke-width="0.5"/>
+<text x="281" y="435" text-anchor="middle" fill="#CECBF6" font-size="13" font-weight="500" font-family="sans-serif">map_to_taxonomy.py</text>
+<text x="281" y="453" text-anchor="middle" fill="#AFA9EC" font-size="11" font-family="sans-serif">fit / new_cap / new_dom</text>
+
+<!-- freccia map → taxonomy_diff -->
+<line x1="362" y1="439" x2="402" y2="439" stroke="#9C9A92" stroke-width="1.5" fill="none" marker-end="url(#a)"/>
+
+<!-- taxonomy_diff.md -->
+<rect x="404" y="416" width="160" height="56" rx="8" fill="#633806" stroke="#EF9F27" stroke-width="0.5"/>
+<text x="484" y="438" text-anchor="middle" fill="#FAC775" font-size="13" font-weight="500" font-family="sans-serif">taxonomy_diff.md</text>
+<text x="484" y="456" text-anchor="middle" fill="#EF9F27" font-size="11" font-family="sans-serif">✎  revisione manuale</text>
+
+<!-- freccia taxonomy_diff → export (L-shape) -->
+<path d="M484,472 L484,500 L223,500" stroke="#9C9A92" stroke-width="1.5" fill="none" marker-end="url(#a)"/>
+
+<!-- export_to_taxonomy.py -->
+<rect x="32" y="478" width="190" height="56" rx="8" fill="#3C3489" stroke="#AFA9EC" stroke-width="0.5"/>
+<text x="127" y="500" text-anchor="middle" fill="#CECBF6" font-size="12" font-weight="500" font-family="sans-serif">export_to_taxonomy.py</text>
+<text x="127" y="518" text-anchor="middle" fill="#AFA9EC" font-size="11" font-family="sans-serif">--dry-run → --apply</text>
+
+<!-- vault-output/ Obsidian privato -->
+<rect x="402" y="478" width="196" height="56" rx="8" fill="#4B1528" stroke="#ED93B1" stroke-width="0.5"/>
+<text x="500" y="500" text-anchor="middle" fill="#F4C0D1" font-size="13" font-weight="500" font-family="sans-serif">vault-output/</text>
+<text x="500" y="518" text-anchor="middle" fill="#ED93B1" font-size="11" font-family="sans-serif">Obsidian vault privato</text>
+
+<!-- freccia export → vault (tratteggiata) -->
+<line x1="222" y1="506" x2="400" y2="506" stroke="#9C9A92" stroke-width="1" stroke-dasharray="5 4" fill="none" marker-end="url(#a)"/>
+
+<!-- etichette freccia export→vault e nota vault, ben separate -->
+<text x="311" y="522" text-anchor="middle" fill="#5F5E5A" font-size="10" font-family="sans-serif">via run_pipeline</text>
+<text x="500" y="548" text-anchor="middle" fill="#888780" font-size="10" font-family="sans-serif">parse_docx + generate_vault</text>
+
+<!-- freccia export → docs/ (scende lungo il bordo sinistro) -->
+<path d="M127,534 L127,756 L264,756 L264,778" stroke="#9C9A92" stroke-width="1.5" fill="none" marker-end="url(#a)"/>
+
+<!-- ═══ CONFINE SKILLS-REPO ═══ -->
+<rect x="12" y="748" width="662" height="264" rx="16" fill="none" stroke="#B4B2A9" stroke-width="1" stroke-dasharray="6 4" opacity="0.3"/>
+<text x="24" y="768" fill="#5F5E5A" font-size="11" font-family="sans-serif">J:\...\skills-repo  —  repo pubblico  GitHub: alesop95/skills</text>
+
+<!-- docs/ box -->
+<rect x="266" y="778" width="200" height="58" rx="8" fill="#0C447C" stroke="#85B7EB" stroke-width="0.5"/>
+<text x="366" y="802" text-anchor="middle" fill="#B5D4F4" font-size="14" font-weight="500" font-family="sans-serif">docs/</text>
+<text x="366" y="820" text-anchor="middle" fill="#85B7EB" font-size="11" font-family="sans-serif">Capability pages (.md)</text>
+<!-- badge obsidian -->
+<rect x="305" y="844" width="122" height="17" rx="8" fill="#EEEDFE" stroke="#AFA9EC" stroke-width="0.5"/>
+<text x="366" y="856" text-anchor="middle" fill="#26215C" font-size="10" font-family="sans-serif">Obsidian vault root</text>
+
+<!-- freccia docs/ → git push -->
+<line x1="466" y1="807" x2="504" y2="807" stroke="#9C9A92" stroke-width="1.5" fill="none" marker-end="url(#a)"/>
+
+<!-- git push box -->
+<rect x="506" y="785" width="150" height="44" rx="8" fill="#0C447C" stroke="#85B7EB" stroke-width="0.5"/>
+<text x="581" y="805" text-anchor="middle" fill="#B5D4F4" font-size="13" font-weight="500" font-family="sans-serif">git push</text>
+<text x="581" y="821" text-anchor="middle" fill="#85B7EB" font-size="11" font-family="sans-serif">→ GitHub Actions</text>
+
+<!-- freccia git push → GitHub Pages -->
+<line x1="581" y1="829" x2="581" y2="912" stroke="#9C9A92" stroke-width="1.5" fill="none" marker-end="url(#a)"/>
+
+<!-- graphify su docs/ (opzionale) -->
+<rect x="58" y="864" width="196" height="54" rx="8" fill="#085041" stroke="#5DCAA5" stroke-width="0.5"/>
+<text x="156" y="886" text-anchor="middle" fill="#9FE1CB" font-size="13" font-weight="500" font-family="sans-serif">/graphify docs/</text>
+<text x="156" y="904" text-anchor="middle" fill="#5DCAA5" font-size="11" font-family="sans-serif">genera graph.html portfolio</text>
+<!-- badge opzionale -->
+<rect x="80" y="850" width="152" height="18" rx="9" fill="#F5C4B3" stroke="#F0997B" stroke-width="0.5"/>
+<text x="156" y="863" text-anchor="middle" fill="#4A1B0C" font-size="10" font-family="sans-serif">opzionale, consuma token</text>
+
+<!-- freccia graphify docs/ → docs/ -->
+<path d="M254,891 L266,840" stroke="#9C9A92" stroke-width="1.5" fill="none" marker-end="url(#a)"/>
+
+<!-- GitHub Pages output -->
+<rect x="476" y="914" width="200" height="56" rx="8" fill="#27500A" stroke="#97C459" stroke-width="0.5"/>
+<text x="576" y="937" text-anchor="middle" fill="#C0DD97" font-size="14" font-weight="500" font-family="sans-serif">alesop95.github.io/skills</text>
+<text x="576" y="955" text-anchor="middle" fill="#97C459" font-size="11" font-family="sans-serif">sito aggiornato (~1 min)</text>
+
+<!-- ═══ LEGENDA ═══ -->
+<rect x="20" y="1006" width="648" height="34" rx="8" fill="none" stroke="#B4B2A9" stroke-width="0.5" opacity="0.2"/>
+<rect x="32" y="1016" width="13" height="13" rx="3" fill="#5DCAA5" stroke="#0F6E56" stroke-width="0.5"/>
+<text x="51" y="1026" fill="#B4B2A9" font-size="11" font-family="sans-serif">graphify (Claude Code)</text>
+<rect x="210" y="1016" width="13" height="13" rx="3" fill="#AFA9EC" stroke="#7F77DD" stroke-width="0.5"/>
+<text x="229" y="1026" fill="#B4B2A9" font-size="11" font-family="sans-serif">script Python (offline)</text>
+<rect x="375" y="1016" width="13" height="13" rx="3" fill="#FAC775" stroke="#EF9F27" stroke-width="0.5"/>
+<text x="394" y="1026" fill="#B4B2A9" font-size="11" font-family="sans-serif">revisione manuale</text>
+<rect x="524" y="1016" width="13" height="13" rx="3" fill="#85B7EB" stroke="#378ADD" stroke-width="0.5"/>
+<text x="543" y="1026" fill="#B4B2A9" font-size="11" font-family="sans-serif">git + GitHub</text>
+</svg>

@@ -1,0 +1,30 @@
+# sources.yml — cartelle sorgente per la pipeline di estrazione skill
+#
+# I path usano variabili di ambiente espanse da os.path.expandvars().
+# Definisci le variabili nel tuo sistema operativo (vedi .env.example).
+# Windows: [System.Environment]::SetEnvironmentVariable("VAR", "value", "User")
+# macOS/Linux: export VAR="value" in ~/.zshrc o ~/.bashrc
+
+sources:
+  - path: "${LETTERDOC_SOURCE_ONEDRIVE}"
+    label: documenti_it
+    include_extensions: [.docx, .txt, .md]
+    exclude_patterns:
+      - "~$*"
+      - "_archive/*"
+      - "template/*"
+
+  - path: "${LETTERDOC_SOURCE_PORTFOLIO}"
+    label: portfolio_it
+    include_extensions: [.docx, .txt, .md]
+    exclude_patterns:
+      - "~$*"
+
+  # Aggiungi altre sorgenti decommentando e rinominando:
+  # - path: "${LETTERDOC_SOURCE_3}"
+  #   label: source_3
+  #   include_extensions: [.docx, .txt, .md]
+  #   exclude_patterns: ["~$*"]
+
+# Path del repo pubblico delle skill (usato da generate_taxonomy_index.py)
+skills_repo: "${LETTERDOC_SKILLS_REPO}"
