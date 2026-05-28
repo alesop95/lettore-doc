@@ -2,13 +2,10 @@
 
 *Versione Markdown del documento `diario-tecnico-progetto (lettore-doc + skills-repo).docx`. Le due versioni sono mantenute sincronizzate: vedere `CLAUDE.md` di lettore-doc per le regole di aggiornamento.*
 
-**Repository**: `alesop95/lettore-doc` (privato) + `alesop95/skills` (pubblico)
+**Repository**: `alesop95/lettore-doc` (privato) + `alesop95/skills` (pubblico)  
 **Sito live**: [alesop95.github.io/skills/](https://alesop95.github.io/skills/)
-**Versione documento**: 1.0 — Maggio 2026
 
 ---
-alesop95.github.io/skills/
-
 # Introduzione
 
 Questo documento racconta la storia di un sistema costruito per risolvere un problema operativo preciso: estrarre automaticamente le competenze dimostrate da una cartella di documentazione aziendale in formato .docx e pubblicarle come tassonomia navigabile su un sito web accessibile da qualsiasi interlocutore tecnico tramite un URL stabile. Questo documento ricostruisce le decisioni prese, i problemi incontrati, le soluzioni adottate e le ragioni tecniche che le hanno determinate, nell'ordine in cui si sono verificate. È scritto per capire il sistema, mantenerlo, eventualmente estenderlo, e per comprendere non solo il cosa ma il perchè di ogni scelta.
@@ -1018,6 +1015,70 @@ Il sistema, una volta completata l'esecuzione dei tre elementi residui descritti
 Per un eventuale secondo ciclo di sviluppo, alcuni filoni di estensione sono gia' identificabili. Il primo e' l'integrazione di embedding semantici per migliorare il matching della pipeline di estrazione skill: il recall basato su keyword e' robusto ma non cattura relazioni semantiche tra termini non lessicalmente identici, dove un sistema basato su embedding riconoscerebbe la corrispondenza. Il secondo filone e' la connessione di sorgenti remote tramite altri server MCP - Google Drive nativo, Notion, Confluence - estendendo la pipeline a documentazione che vive fuori dal filesystem locale. Il terzo filone e' l'automazione del passo graphify attraverso un'API key dedicata che consenta l'invocazione non interattiva da script PowerShell, eliminando l'attuale workflow semi-automatico per le sorgenti multiple. Il quarto filone, piu' speculativo, e' l'uso del Knowledge Graph del portfolio come superficie di interazione per query semantiche complesse via natural language, sfruttando il server MCP di graphify che e' gia' incluso nello strumento.
 
 In tutti questi sviluppi futuri, il vincolo architetturale del confine tra dominio privato e dominio pubblico rimane non negoziabile, e qualsiasi nuovo strumento o sorgente va integrato preservando la sanitizzazione obbligatoria al passaggio del confine. Il sistema attuale e' stato costruito intorno a questo vincolo, e le sue estensioni future dovranno rispettarlo per mantenere la sicurezza strutturale che lo caratterizza.
+
+## C.8 Primo run reale - pilot Helpdesk_PC formatting (2026-05-28)
+
+Il primo ciclo di ingest end-to-end su una sorgente reale è stato eseguito sulla subfolder
+
+OneDrive\Documenti - IT\Helpdesk_PC formatting
+scelta come pilot per tre motivi: dimensione adatta (24 file di testo + 41 immagini), tema coerente con una Capability già presente ma vuota (
+formatting-machines-os.md
+), e contenuto tecnico privo di nomi cliente sensibili, utile per validare la pipeline senza vincoli di privacy elevati.
+
+## Infrastruttura aggiunta in questo ciclo
+
+Prima di lanciare il pilot è stato costruito lo state tracking degli ingest, che mantiene
+_intermediate\ingest_state.json
+con un snapshot sha256+mtime per ogni file di testo di ciascuna subfolder già ingerita, insieme alla data dell’ultimo ingest e al commit del skills-repo associato.
+
+Nuovi script:
+scripts\ingest_state.py — CLI con tre comandi (status, track, untrack).
+scripts\session_resume.ps1 — wrapper PowerShell che stampa il digest dei delta a ogni apertura di sessione.
+scripts\start_graphify.ps1 — launcher dedicato per graphify che forza --model claude-opus-4-7 sulla subfolder sorgente (il default di progetto non si propaga alle sessioni aperte fuori dalla root del repository).
+
+È stato configurato claude-opus-4-7 come modello di default di progetto in .claude\settings.json con un hook SessionStart che lancia automaticamente session_resume.ps1 a ogni nuova sessione. Aggiunta una nuova REGOLA OPERATIVA in CLAUDE.md (“State tracking ingest”) e una sezione “Riprendere il lavoro” in README.md.
+
+## Esecuzione del ciclo
+
+Pre-snapshot: ingest_state.py track ha registrato 24 file di testo (.docx/.txt/.md) come baseline.
+
+Graphify (/graphify . con Opus 4.7) ha prodotto in Helpdesk_PC formatting\graphify-out\ un grafo di 89 nodi, 0 archi nativi, 9 hyperedge calcolati. Costo: circa 183k token in input, 12k token in output, una sola run.
+
+Vault pipeline (run_pipeline.ps1) ha generato un vault Obsidian con 2 nodi (i soli .docx della subfolder; tutti gli altri sono .txt o .md che parse_docx.py non parsa per design).
+
+Skill export pipeline (taxonomy_index + enrich + map + apply): 44 nodi classificati come fit su 8 Capability esistenti, di cui 31 forti su formatting-machines-os. Zero new_capability proposte, 8 new_domain (tutti rumore da descrizioni screenshot/chat, scartati in blocco). Commit risultante sul skills-repo: 19a4ba7.
+
+Re-track: ingest_state.py track --commit 19a4ba7 ha rinfrescato lo snapshot finale (27 file ora, perché graphify ha generato 3 .md in graphify-out\converted\ come byproduct).
+
+## Bug emersi e patchati
+
+### 1. generate_taxonomy_index.py — SyntaxError
+
+I messaggi di errore a riga 195–203 erano stringhe spezzate su più righe senza \n escape né triple-quote. Lo script crashava prima di scrivere taxonomy_index.json e bloccava map_to_taxonomy a cascata. Patchato unificando le stringhe con \n.
+
+### 2. extract_entities.py PROPER_NOUN_RE — falsi positivi CamelCase
+
+La regex non richiedeva spazio obbligatorio tra le due parole capitalizzate, quindi token singoli CamelCase tipo WindowsApp, PowerShell, BitLocker, MicrosoftCorporation venivano matchati come “nomi di persona italiana” e finivano nella anonymization_map come [PERSONA_1..138]. Patch: aggiunto \s+ obbligatorio tra le due capitalizzate + introdotto TECH_BRAND_STOPWORDS (vendor, OS, tool, framework) usato come filtro nel matcher. Risultato dopo patch: 115 voci ancora, ma sono frasi tecniche a due parole tipo “Restore Point”, “Media Feature Pack”, “Object Name”, “Minimum Runtime” — rumore di sfondo che una stop-list manuale non risolve.
+
+### 3. Conclusione sull’anonimizzazione
+
+L’euristica regex+stoplist non scalerà. Per il pilot ho usato --no-anonymize (i preview sono stati iniettati verbatim), valutando manualmente che il contenuto della subfolder non contenesse riferimenti sensibili. Per i prossimi cicli su subfolder con contenuto più formale (ENIVIPA, Cybersec & IT Governance) servierà un modello NER vero (es. spaCy it_core_news_lg) o passaggio a embedding-based classification. Apertura task per la prossima fase di tuning.
+
+## Stato attuale dopo il ciclo C.8
+skills-repo: 8 Capability popolate o aggiornate; in particolare formatting-machines-os.md passa da 94 byte (placeholder) a ~14 kB con 31 voci di evidence. Pubblicato su https://alesop95.github.io/skills/formatting-machines-os/ (commit 19a4ba7).
+lettore-doc: nuovi script di state tracking, hook SessionStart attivo, default modello Opus 4.7. Commit ab88238.
+ingest_state.json: tracciata 1 subfolder (Helpdesk_PC formatting), altre 26 subfolder OneDrive + 14 Portfolio in attesa.
+
+## Prossimi cicli proposti
+
+Subfolder candidate per il prossimo ciclo (criteri: dimensione media, mapping pulito a Capability esistente, contenuto tecnico):
+ARCHITETTURA SERVER-CLOUD-LINEE (23 doc, 4 img) — Capability target: infrastructure-virtualization, cloud-platforms.
+
+Helpdesk_RWS-Groupshare-Studio (16 doc, 114 img) — Capability target: software-license-management, advanced-helpdesk.
+
+Miscellaneous procedure e utilities (27 doc, 89 img) — Capability target: system-administration, advanced-helpdesk.
+
+Da fare PRIMA di processare subfolder grandi (ENIVIPA, eGetrad, SCENIA): risolvere il problema anonimizzazione.
 
 # Lezioni apprese
 
