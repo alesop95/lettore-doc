@@ -123,6 +123,59 @@ Se non c'e' modifica, i due file erano gia' sincronizzati.
 
 ---
 
+## REGOLA OPERATIVA - State tracking ingest
+
+Il file `_intermediate\ingest_state.json` e' la **sorgente di verita' del
+progresso ingest** sulla macchina locale. Per ciascuna subfolder sorgente
+che e' stata ingerita almeno una volta tiene uno snapshot sha256+mtime per
+ogni file di testo (`.docx`, `.txt`, `.md`), insieme alla data dell'ultimo
+ingest e al commit del `skills-repo` associato.
+
+Lo gestisce esclusivamente lo script `scripts\ingest_state.py`. Il file vive
+in `_intermediate\` che e' in `.gitignore`: lo stato e' locale e per macchina
+(la storia "ufficiale" e condivisa e' Git su `skills-repo` + il diario).
+
+### Comandi (sempre tramite il virtualenv del progetto)
+
+```
+# Digest di stato (alla ripresa di una sessione)
+.\scripts\session_resume.ps1
+
+# Focus su una subfolder con elenco esplicito dei file cambiati
+.\scripts\session_resume.ps1 -Folder "<path>"
+
+# Aggiornare lo snapshot di una subfolder (post-ingest)
+.\.venv\Scripts\python.exe scripts\ingest_state.py track `
+    --folder "<path>" --source ONEDRIVE --commit <sha>
+
+# Rimuovere una subfolder dal tracking
+.\.venv\Scripts\python.exe scripts\ingest_state.py untrack --folder "<path>"
+```
+
+### Regole
+
+- Il file va aggiornato **una sola volta per ciclo**, esclusivamente con
+  `track`, e **solo dopo aver eseguito `export_to_taxonomy.py --apply` con
+  successo e committato sul `skills-repo`**.
+- Mai modificare il file a mano: il formato e' interno allo script.
+- Mai committare il file: vive in `_intermediate\` (gitignored). Se viene
+  spostato fuori da quella directory si rompe il contratto di riservatezza.
+- Le subfolder che non sono mai state ingerite non compaiono nel digest
+  finche' non vengono registrate la prima volta con `track`.
+
+### Modello di default per le sessioni
+
+Il progetto imposta `claude-opus-4-7` come modello di default tramite
+`E:\lettore-doc\.claude\settings.json`. Le sessioni Claude Code aperte nella
+root del progetto lo ereditano. Le sessioni `/graphify`, che girano dentro la
+**cartella sorgente** (non nella root del progetto), non lo ereditano: per
+quelle usare sempre il launcher `scripts\start_graphify.ps1` che forza
+`--model claude-opus-4-7`. La pipeline a valle e' interamente Python
+deterministico, quindi il modello non influisce su nessuno step diverso da
+`/graphify`.
+
+---
+
 ## Variabili di ambiente attese
 
 Tutte le path sensibili sono risolte tramite variabili di ambiente. Verificare

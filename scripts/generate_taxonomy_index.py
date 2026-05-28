@@ -193,12 +193,9 @@ def _resolve_skills_repo(cli_value):
     if env_val:
         return Path(env_val).resolve()
     print(
-        "ERRORE: path di skills-repo non trovato.
-"
-        "  1. Passa --skills-repo <path>
-"
-        "  2. Setta skills_repo in sources.yml con variabile di ambiente
-"
+        "ERRORE: path di skills-repo non trovato.\n"
+        "  1. Passa --skills-repo <path>\n"
+        "  2. Setta skills_repo in sources.yml con variabile di ambiente\n"
         "  3. Setta LETTERDOC_SKILLS_REPO come variabile di ambiente",
         file=__import__("sys").stderr
     )

@@ -50,8 +50,12 @@ COMPANY_SUFFIX_RE = re.compile(
 )
 
 PROPER_NOUN_RE = re.compile(
-    r"(?<![\.\!\?]\s)(?<!^)([A-ZÀ-Ý][a-zà-ÿ]+(?:\s+(?:di|della|del|degli|delle|dei|da|de|d')\s+)?"
-    r"(?:[A-ZÀ-Ý][a-zà-ÿ]+)(?:\s+[A-ZÀ-Ý][a-zà-ÿ]+){0,2})"
+    r"(?<![\.\!\?]\s)(?<!^)("
+    r"[A-ZÀ-Ý][a-zà-ÿ]+"
+    r"(?:\s+(?:di|della|del|degli|delle|dei|da|de|d')\s+|\s+)"
+    r"[A-ZÀ-Ý][a-zà-ÿ]+"
+    r"(?:\s+[A-ZÀ-Ý][a-zà-ÿ]+){0,2}"
+    r")"
 )
 
 LAW_REF_RE = re.compile(
@@ -91,6 +95,53 @@ DOC_REF_RE = re.compile(
     r"([A-Za-zÀ-ÿ0-9][\w\-\.\s]{2,60}?\.docx?)",
     re.IGNORECASE,
 )
+
+TECH_BRAND_STOPWORDS = {
+    # Vendor/brand
+    "Microsoft", "Apple", "Google", "Amazon", "Meta", "Facebook",
+    "Intel", "AMD", "NVIDIA", "Qualcomm", "ARM",
+    "Cisco", "Juniper", "Fortinet", "Palo", "Sophos", "Symantec", "McAfee",
+    "Oracle", "IBM", "SAP", "Salesforce", "Atlassian",
+    "Adobe", "Autodesk", "VMware", "Red", "RedHat", "Canonical", "SUSE",
+    "Asrock", "Asus", "ASUS", "Gigabyte", "MSI", "Acer", "Lenovo", "Dell", "HP",
+    "Samsung", "Kingston", "Western", "Seagate", "Hitachi", "Toshiba", "Crucial",
+    "Logitech", "Razer", "Corsair",
+    "Telegram", "WhatsApp", "Signal", "Slack", "Discord", "Zoom",
+    "GitHub", "GitLab", "Bitbucket", "Atlassian",
+    # OS / tech
+    "Windows", "Win", "Linux", "Ubuntu", "Xubuntu", "Lubuntu", "Kubuntu",
+    "Debian", "Fedora", "CentOS", "Arch", "Mint", "MacOS", "OSX", "iOS", "Android",
+    "AnduinOS", "Noble", "Plucky",
+    # Tools / commands / frameworks / products
+    "Power", "PowerShell", "Bash", "Python", "Java", "JavaScript", "TypeScript",
+    "Bit", "BitLocker", "OneDrive", "OneNote", "Outlook", "SharePoint", "Teams",
+    "Office", "Edge", "Chrome", "Firefox", "Safari", "Opera",
+    "Acrobat", "Photoshop", "Illustrator",
+    "Docker", "Kubernetes", "Terraform", "Ansible", "Puppet", "Chef",
+    "Xbox", "Skype", "LinkedIn", "Yammer", "Stream",
+    "Cortana", "Siri", "Alexa",
+    "Visual", "Studio", "Code", "Notepad", "Word", "Excel",
+    "Active", "Directory", "Internet", "Explorer", "Group", "Policy",
+    "Server", "Client", "Mobile", "Desktop", "Cloud",
+    "Mixed", "Reality", "Async", "Sync", "Cred", "Dialog",
+    "Audio", "Video", "Image", "Webp", "Web",
+    "Wmi", "WmiObject", "Get", "Set", "New", "Remove", "Appx", "AppxPackage",
+    "Original", "Product", "Microsoftcorporation",
+    "Boot", "Hardware", "Software", "Driver", "Firmware", "Kernel",
+    "Disk", "Drive", "Partition", "Volume", "File", "Folder",
+    "User", "Account", "Login", "Logoff", "Password",
+    "Memory", "Integrity", "Security", "Update", "Upgrade",
+    "Secure", "Trusted", "Platform", "Module",
+    "Gnome", "GNOME", "Cinnamon", "Plasma", "Mate",
+    "Ubuntu", "Fedora", "Mint",
+    "Clonezilla", "Rufus", "BalenaEtcher", "Etcher", "UNetbootin",
+    "Dism", "Diskpart", "Diskmgmt", "Sysprep",
+    "Wim", "ISO", "USB", "DVD", "CD", "HDD", "SSD", "NVMe",
+    "Bios", "BIOS", "UEFI", "AMI", "Phoenix",
+    "Tcp", "Udp", "Http", "Https", "Ftp", "Sftp", "Ssh", "Telnet",
+    "Json", "Xml", "Yaml", "Csv", "Sql",
+    "Photo", "Screenshot", "Image",
+}
 
 ITALIAN_STOPWORDS = {
     "Il", "Lo", "La", "I", "Gli", "Le", "Un", "Uno", "Una", "Del", "Dello",
@@ -161,12 +212,18 @@ def extract_from_text(text: str) -> dict[str, list[str]]:
 
     for m in PROPER_NOUN_RE.finditer(text):
         candidate = m.group(1).strip()
-        first_word = candidate.split()[0]
+        tokens = candidate.split()
+        first_word = tokens[0]
         if first_word in ITALIAN_STOPWORDS:
             continue
-        if any(w in company_substrings for w in candidate.split()):
+        if any(w in company_substrings for w in tokens):
             continue
-        if len(candidate.split()) >= 2 or len(candidate) > 8:
+        # Skip tech brand / product / OS / tool names: se anche un solo token
+        # appartiene alla stop-list tech, scarta (evita anonimizzazione di
+        # "Microsoft Office", "Windows Update", "PowerShell Core" come persone).
+        if any(t in TECH_BRAND_STOPWORDS for t in tokens):
+            continue
+        if len(tokens) >= 2:
             results["PROPER_NOUN"].append(candidate)
 
     return dict(results)

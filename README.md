@@ -102,6 +102,60 @@ sources:
 
 ---
 
+## Riprendere il lavoro (state tracking ingest)
+
+Ad ogni nuova sessione di lavoro su `lettore-doc`, la prima azione utile e'
+guardare lo stato corrente dell'ingest e capire se ci sono file modificati sul
+disco rispetto all'ultimo ciclo. Lo state tracker (`scripts\ingest_state.py`)
+mantiene uno snapshot sha256+mtime per file di ogni subfolder sorgente gia'
+ingerita, in `_intermediate\ingest_state.json` (locale, non versionato).
+
+### Digest di apertura sessione
+
+```powershell
+.\scripts\session_resume.ps1
+```
+
+Per ogni subfolder tracciata stampa: ultima data di ingest, commit associato
+sul `skills-repo`, e i conteggi `unchanged / modified / new / deleted`.
+
+Focus su una singola subfolder (mostra l'elenco esplicito dei file cambiati):
+
+```powershell
+.\scripts\session_resume.ps1 -Folder "$env:LETTERDOC_SOURCE_ONEDRIVE\Helpdesk_PC formatting"
+```
+
+### Registrare/aggiornare uno snapshot (post-ingest)
+
+Da eseguire una volta, al termine di un ciclo di ingest, dopo `--apply` su
+`skills-repo`:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\ingest_state.py track `
+    --folder "$env:LETTERDOC_SOURCE_ONEDRIVE\Helpdesk_PC formatting" `
+    --source ONEDRIVE `
+    --commit (git -C $env:LETTERDOC_SKILLS_REPO rev-parse HEAD)
+```
+
+Da quel momento, ogni sessione successiva mostrera' i delta rispetto a quello
+snapshot. Le subfolder che non sono mai state ingerite non compaiono nel
+digest finche' non vengono registrate la prima volta.
+
+### Avviare graphify con il modello corretto
+
+Le sessioni `/graphify` girano dentro la cartella sorgente, non nella root
+del progetto, quindi non ereditano il default modello di `lettore-doc`.
+Usare il launcher dedicato:
+
+```powershell
+.\scripts\start_graphify.ps1 -SourceFolder "$env:LETTERDOC_SOURCE_ONEDRIVE\<subfolder>"
+```
+
+Apre Claude Code dentro la subfolder con `--model claude-opus-4-7`; dentro la
+sessione lanciare poi `/graphify .`.
+
+---
+
 ## Uso - Pipeline di estrazione skill (aggiornamento tassonomia)
 
 Questa pipeline estrae skill dai documenti sorgente e aggiorna `skills-repo`
