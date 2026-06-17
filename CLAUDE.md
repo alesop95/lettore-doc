@@ -40,6 +40,30 @@ Code in qualsiasi sessione:
 
 ---
 
+## Sistema di contesto (standard adottato)
+
+Il progetto adotta il sistema portabile descritto in `.claude/PROJECT-SYSTEM.md`. A inizio sessione
+si segue la procedura di ripresa: si legge per primo `.claude/memory/index.md` (branch, commit di
+riferimento, stato delle schede, prossima azione), poi `.claude/context/current-work.md` se c'e una
+feature attiva, e si invoca la skill `sync-context` per il drift schede-codice. Le schede in
+`.claude/context/` (`STACK.md`, `design-and-security.md`, `deployment.md`, `dev-testing.md`,
+`roadmap.md`) riassumono e riconciliano `GUIDA-TECNICA.md`, che resta il dettaglio. Il work-log e in
+`.claude/memory/progress.md`, le decisioni in `.claude/memory/decisions.md`. La skill `onboard` da la
+spiegazione completa a chi parte da zero. Claude non scrive da solo in `memory/` e `context/`: si
+aggiornano su richiesta esplicita.
+
+### Strumenti attivati e uso in questo progetto
+
+- `code-context` (MCP tree-sitter, vedi `.mcp.json`): per mappare con precisione gli script Python
+  di `scripts/` quando si lavora sul codice o si riconciliano le schede.
+- `caveman` (riduzione dei token di output, plugin esterno `juliusbrussee/caveman`): NON e' incluso
+  nel repo, perche e' un plugin che si auto-attiva. Si installa su richiesta col suo installer
+  (`install.ps1` / `INSTALL.md` del repo) e si abilita SOLO per la singola sessione operativa sul
+  codice, poi si disabilita. Va tenuto disattivato quando si aggiorna il diario o si genera prosa
+  per la tassonomia pubblica, perche ne degraderebbe lo stile.
+- `knowledge-wiki` NON adottata: il progetto ha gia una knowledge base nativa (vault Obsidian piu
+  graphify e la skill `grafo-conoscenza`).
+
 ## REGOLA OPERATIVA - Sincronia diario .docx e .md
 
 Il diario tecnico esiste in due formati paralleli, **entrambi versionati nel
