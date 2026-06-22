@@ -1,4 +1,30 @@
 {
+  "autoMemoryEnabled": false,
+  "permissions": {
+    "allow": [
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git branch:*)",
+      "Bash(git show:*)",
+      "Bash(git tag:*)",
+      "Bash(git config --local --list:*)",
+      "Read(./**)"
+    ],
+    "deny": [
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git rebase:*)",
+      "Bash(git config --global:*)",
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/credentials)",
+      "Bash(rm -rf:*)"
+    ],
+    "ask": ["Bash(npm publish:*)", "Bash(docker push:*)"]
+  },
   "model": "claude-opus-4-7",
   "hooks": {
     "SessionStart": [
