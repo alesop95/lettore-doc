@@ -28,6 +28,51 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 # ============================================================
+# spaCy NER (lazy load) - usato per PROPER_NOUN con label PER
+# ============================================================
+
+_NLP = None
+_SPACY_TRIED = False
+_SPACY_MODEL = "it_core_news_lg"
+
+
+def _get_nlp():
+    """Carica il modello spaCy italiano alla prima chiamata.
+    Restituisce None se spaCy o il modello non sono installati: in quel caso
+    il chiamante fa fallback a regex+stoplist (sub-ottimale)."""
+    global _NLP, _SPACY_TRIED
+    if _NLP is not None:
+        return _NLP
+    if _SPACY_TRIED:
+        return None
+    _SPACY_TRIED = True
+    try:
+        import spacy  # type: ignore
+    except ImportError:
+        print(
+            "AVVISO: pacchetto 'spacy' non installato. "
+            "Esegui: pip install -r requirements.txt",
+            file=sys.stderr,
+        )
+        print("Fallback regex+stoplist per PROPER_NOUN.", file=sys.stderr)
+        return None
+    try:
+        _NLP = spacy.load(
+            _SPACY_MODEL,
+            disable=["tagger", "morphologizer", "parser", "lemmatizer", "attribute_ruler"],
+        )
+        return _NLP
+    except OSError:
+        print(
+            f"AVVISO: modello spaCy '{_SPACY_MODEL}' non installato. "
+            f"Esegui: python -m spacy download {_SPACY_MODEL}",
+            file=sys.stderr,
+        )
+        print("Fallback regex+stoplist per PROPER_NOUN.", file=sys.stderr)
+        return None
+
+
+# ============================================================
 # Pattern
 # ============================================================
 
@@ -210,21 +255,43 @@ def extract_from_text(text: str) -> dict[str, list[str]]:
     for m in DOC_REF_RE.finditer(text):
         results["DOC_REF"].append(m.group(1).strip())
 
-    for m in PROPER_NOUN_RE.finditer(text):
-        candidate = m.group(1).strip()
-        tokens = candidate.split()
-        first_word = tokens[0]
-        if first_word in ITALIAN_STOPWORDS:
-            continue
-        if any(w in company_substrings for w in tokens):
-            continue
-        # Skip tech brand / product / OS / tool names: se anche un solo token
-        # appartiene alla stop-list tech, scarta (evita anonimizzazione di
-        # "Microsoft Office", "Windows Update", "PowerShell Core" come persone).
-        if any(t in TECH_BRAND_STOPWORDS for t in tokens):
-            continue
-        if len(tokens) >= 2:
+    nlp = _get_nlp()
+    if nlp is not None:
+        # spaCy NER: estrae solo entita' label PER (persone), alta precisione
+        # su italiano formale. Si applica comunque il filtro TECH_BRAND_STOPWORDS
+        # come safety net per eventuali mis-classification (es. nomi prodotto
+        # che sembrano nomi propri).
+        doc = nlp(text)
+        for ent in doc.ents:
+            if ent.label_ != "PER":
+                continue
+            candidate = ent.text.strip()
+            tokens = candidate.split()
+            if len(tokens) < 2:
+                continue  # nomi singoli ambigui (PER + iniziale isolata, troppo rischioso)
+            if tokens[0] in ITALIAN_STOPWORDS:
+                continue
+            if any(w in company_substrings for w in tokens):
+                continue
+            if any(t in TECH_BRAND_STOPWORDS for t in tokens):
+                continue
             results["PROPER_NOUN"].append(candidate)
+    else:
+        # Fallback regex+stoplist quando spaCy/modello non disponibili.
+        # Sub-ottimale: produce falsi positivi su frasi tecniche a due parole
+        # (es. "Restore Point", "Media Feature Pack"). Vedi diario C.8.
+        for m in PROPER_NOUN_RE.finditer(text):
+            candidate = m.group(1).strip()
+            tokens = candidate.split()
+            first_word = tokens[0]
+            if first_word in ITALIAN_STOPWORDS:
+                continue
+            if any(w in company_substrings for w in tokens):
+                continue
+            if any(t in TECH_BRAND_STOPWORDS for t in tokens):
+                continue
+            if len(tokens) >= 2:
+                results["PROPER_NOUN"].append(candidate)
 
     return dict(results)
 

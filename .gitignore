@@ -45,3 +45,7 @@ desktop.ini
 # ── File temporanei Word ──────────────────────────────────
 ~$*.docx
 ~$*.doc
+
+
+# Altri file e cartelle da ignorare
+_notes/
