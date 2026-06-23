@@ -206,10 +206,9 @@ Tutte le path sensibili sono risolte tramite variabili di ambiente. Verificare
 con queste righe in PowerShell:
 
 ```
-$env:LETTERDOC_SKILLS_REPO       # path al repo locale skills (E:\skills)
+$env:LETTERDOC_SKILLS_REPO       # path al repo locale alesop95/skills (E:\skills)
 $env:LETTERDOC_SOURCE_ONEDRIVE   # path alla cartella sorgente OneDrive
 $env:LETTERDOC_SOURCE_PORTFOLIO  # path alla cartella sorgente Portfolio
-$env:LETTERDOC_VAULT_DIR         # path al vault Obsidian principale
 ```
 
 Valori correnti di riferimento su questa macchina:
@@ -218,7 +217,6 @@ Valori correnti di riferimento su questa macchina:
 LETTERDOC_SKILLS_REPO     = E:\skills
 LETTERDOC_SOURCE_ONEDRIVE = C:\Users\Utente\OneDrive - Intrawelt S.a.s\Documenti - IT
 LETTERDOC_SOURCE_PORTFOLIO = J:\googleDrive_sync\Portfolio and ongoing studies\IT-RELATED (skills, projects, tools, procedures,books)
-LETTERDOC_VAULT_DIR       = C:\Users\Utente\Documents\Obsidian Vault
 ```
 
 Se una variabile risulta vuota, il valore non e' stato propagato nella sessione
@@ -231,16 +229,13 @@ $env:NOME = [System.Environment]::GetEnvironmentVariable("NOME", "User")
 Per il setup iniziale su una nuova macchina vedere README.md sezione "Setup"
 oppure Appendice A del diario.
 
-### Vault secondaria Portfolio
+### vault-output/ come spazio di lavoro unificato
 
-`J:\googleDrive_sync\Portfolio and ongoing studies\lettore-doc-vault` e' il vault
-Obsidian dedicato al source Portfolio: inizializzato ma non ancora popolato. Per
-popolare, passare esplicitamente il path al pipeline:
-
-```powershell
-.\run_pipeline.ps1 -SourceFolder $env:LETTERDOC_SOURCE_PORTFOLIO `
-    -VaultDir "J:\googleDrive_sync\Portfolio and ongoing studies\lettore-doc-vault"
-```
+`vault-output/` e' lo spazio di lavoro interno della pipeline: tutti i source
+(OneDrive, Portfolio, qualsiasi altro) vi confluiscono in modalita' incrementale.
+Non e' un vault da mantenere altrove. Aprirlo in Obsidian e' opzionale
+(File -> Open folder as vault su `E:\lettore-doc\vault-output\`) per navigare le
+note generate, ma non e' un prerequisito della pipeline.
 
 Nota aperta: valutare se ampliare LETTERDOC_SOURCE_PORTFOLIO all'intera cartella
 `J:\googleDrive_sync\Portfolio and ongoing studies` invece del solo IT-RELATED.
