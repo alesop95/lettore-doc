@@ -237,6 +237,9 @@ Non e' un vault da mantenere altrove. Aprirlo in Obsidian e' opzionale
 (File -> Open folder as vault su `E:\lettore-doc\vault-output\`) per navigare le
 note generate, ma non e' un prerequisito della pipeline.
 
+Per plugin, flusso completo e istruzioni di visualizzazione Obsidian vedere
+`OBSIDIAN.md` nella root del progetto.
+
 Nota aperta: valutare se ampliare LETTERDOC_SOURCE_PORTFOLIO all'intera cartella
 `J:\googleDrive_sync\Portfolio and ongoing studies` invece del solo IT-RELATED.
 
