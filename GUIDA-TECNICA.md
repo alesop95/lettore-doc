@@ -57,7 +57,16 @@ Tre conseguenze pratiche: il sistema è **riproducibile** (rilanciando gli scrip
 
 ### 1.5 L'ambiente Python isolato
 
-Il virtual environment vive in `.venv/` dentro la cartella del progetto. Tutto è contenuto in `E:\lettore-doc\`. Spostare la cartella richiede solo `setup.ps1`/`setup.sh`. Gli script di orchestrazione lanciano direttamente il Python del venv tramite path completo, senza attivare nulla nella sessione.
+Il virtual environment vive in `.venv/` dentro la cartella del progetto. Tutto è contenuto in `E:\lettore-doc\`. Gli script di orchestrazione lanciano direttamente il Python del venv tramite path completo, senza attivare nulla nella sessione.
+
+**Attenzione al rename/spostamento della cartella**: i launcher dentro `.venv/Scripts/` hanno il path della cartella originale codificato. Se la cartella viene rinominata o spostata, il venv va ricreato da zero:
+
+```powershell
+Remove-Item -Recurse -Force .\.venv
+python -m venv .venv
+.\.venv\Scripts\pip install -r requirements.txt
+.\.venv\Scripts\python -m spacy download it_core_news_sm
+```
 
 ---
 
@@ -150,7 +159,16 @@ La separazione in due fasi (scheletro + preview) ottimizza il primo accesso: il 
 
 ### 4.3 Fase 3 - Estrazione entità
 
-`extract_entities.py` applica regex calibrate per l'italiano tecnico-amministrativo. Non usa ML: è euristica deterministica.
+`extract_entities.py` applica regex calibrate per l'italiano tecnico-amministrativo. Per nove categorie su dieci è euristica deterministica; la categoria `PROPER_NOUN` usa spacy (modello `it_core_news_sm`) per NER[^1] su testo italiano quando il pacchetto è installato, e cade in fallback regex+stoplist in sua assenza. Il fallback funziona ma produce qualità inferiore sui nomi di persona, che alimentano i wiki-link tra le note.
+
+[^1]: *NER*, Named Entity Recognition — tecnica che identifica e classifica automaticamente entità nominate nel testo (persone, luoghi, organizzazioni) senza regole scritte a mano.
+
+**Setup spacy** (una volta per venv):
+```powershell
+.\.venv\Scripts\pip install spacy
+.\.venv\Scripts\python -m spacy download it_core_news_sm
+```
+spacy è già in `requirements.txt`; il download del modello linguistico è un passaggio separato non gestibile da pip.
 
 **Le 10 categorie:**
 
@@ -502,8 +520,10 @@ Le `DOMAIN_BASE_KEYWORDS` base sono in testa a `generate_taxonomy_index.py`.
 # 1. Copia lettore-doc senza .venv, _intermediate, vault-output
 # 2. Sul nuovo PC:
 .\setup.ps1
-# 3. Clona skills-repo:
-git clone git@github-personal:alesop95/skills.git "J:\...\skills-repo"
+# 3. Scarica il modello spacy italiano (non incluso in requirements.txt):
+.\.venv\Scripts\python -m spacy download it_core_news_sm
+# 4. Clona skills-repo:
+git clone git@github-personal:alesop95/skills.git "E:\skills"
 ```
 
 ---
