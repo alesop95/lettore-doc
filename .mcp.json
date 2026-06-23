@@ -3,6 +3,14 @@
     "code-context": {
       "command": "cmd",
       "args": ["/c", "npx", "-y", "code-context-provider-mcp@latest"]
+    },
+    "obsidian-vaults": {
+      "command": "cmd",
+      "args": [
+        "/c", "npx", "-y", "@modelcontextprotocol/server-filesystem",
+        "E:\\lettore-doc\\vault-output",
+        "E:\\skills\\docs"
+      ]
     }
   }
 }

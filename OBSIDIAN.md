@@ -70,6 +70,35 @@ piu' immersiva dello stesso grafo.
 
 ---
 
+## Server MCP obsidian-vaults
+
+Il server MCP `obsidian-vaults` (configurato a livello di account in
+`~/.claude-accountN/mcp.json` e nella app claude.ai desktop) espone
+`vault-output/` come filesystem accessibile all'agente. Questo abilita un modo
+di lavorare diverso rispetto alla lettura esplicita dei file via `Read`: Claude
+puo' navigare il vault autonomamente nella conversazione, senza che l'utente
+incolli contenuto o fornisca path.
+
+Casi d'uso concreti nel flusso lettore-doc:
+
+"Cosa dice la nota sul documento X?" — Claude cerca direttamente nel vault con
+`search_files` e legge la nota pertinente, senza che l'utente navighi in Obsidian.
+
+"Trova tutte le note che menzionano Y" — ricerca full-text su tutta `vault-output/`
+in un solo passaggio conversazionale.
+
+Correggere o integrare una nota — Claude legge la nota corrente via MCP e la
+riscrive con `write_file`, aggiornando il vault senza uscire dalla chat.
+
+Confrontare due note — Claude legge entrambe e produce un confronto o una sintesi
+nella stessa conversazione.
+
+Il server e' attivo in tutte le sessioni Claude Code (account1 e account2) e nella
+app claude.ai desktop. Non e' necessario aprire Obsidian per usarlo: e' un accesso
+parallelo allo stesso filesystem.
+
+---
+
 ## Flusso completo
 
 ```
