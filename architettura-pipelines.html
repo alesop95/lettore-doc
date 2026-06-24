@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>lettore-doc · le due pipeline</title>
+<style>
+  :root {
+    --bg: #f6f3ed;
+    --card: #ffffff;
+    --ink: #1f2933;
+    --muted: #5b6470;
+    --faint: #8a8f97;
+    --rule: #d9d4c8;
+
+    --a: #a7714f;
+    --a-soft: #f3e5d9;
+    --a-ink: #6e4329;
+
+    --b: #4b6985;
+    --b-soft: #dfe7f0;
+    --b-ink: #28425e;
+
+    --src: #ece6da;
+    --src-ink: #4a3f2c;
+
+    --done-bg: #d8e4d2;
+    --done-ink: #3d5a3a;
+    --wip-bg:  #f0e2c8;
+    --wip-ink: #7a5a2e;
+
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Inter", sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.55;
+    padding: 48px 28px 80px;
+  }
+
+  .page {
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0 0 6px;
+  }
+
+  .subtitle {
+    color: var(--muted);
+    font-size: 14px;
+    margin: 0 0 36px;
+  }
+
+  /* sources row */
+  .sources {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+
+  .source {
+    background: var(--src);
+    border: 1px solid #d9d1bf;
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+
+  .source-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--src-ink);
+    opacity: 0.7;
+    margin-bottom: 4px;
+  }
+
+  .source-name {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--src-ink);
+    word-break: break-all;
+  }
+
+  .source-note {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+
+  /* trunk → split */
+  .trunk {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .trunk .vline { width: 2px; height: 22px; background: var(--rule); }
+  .trunk .split {
+    width: 60%;
+    max-width: 720px;
+    height: 2px;
+    background: var(--rule);
+  }
+  .trunk .legs {
+    display: flex;
+    justify-content: space-between;
+    width: 60%;
+    max-width: 720px;
+  }
+  .trunk .legs .leg { width: 2px; height: 18px; background: var(--rule); }
+
+  /* two-column pipelines */
+  .columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+  }
+
+  .col h2 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin: 0 0 4px;
+  }
+  .col .col-sub {
+    font-size: 13px;
+    color: var(--muted);
+    margin: 0 0 14px;
+  }
+  .col.a h2 { color: var(--a-ink); }
+  .col.b h2 { color: var(--b-ink); }
+
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 999px;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+  .badge.done { background: var(--done-bg); color: var(--done-ink); }
+  .badge.wip  { background: var(--wip-bg);  color: var(--wip-ink); }
+
+  .step {
+    background: var(--card);
+    border: 1px solid #e6e0d2;
+    border-left: 3px solid var(--rule);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+  }
+  .col.a .step { border-left-color: var(--a); }
+  .col.b .step { border-left-color: var(--b); }
+  .col.b .step.llm { background: var(--b-soft); border-left-color: var(--b); }
+  .col.a .step.final { background: var(--a-soft); }
+  .col.b .step.final { background: var(--b-soft); }
+
+  .step .row1 {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .step .name {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .step .kind {
+    font-size: 11px;
+    color: var(--faint);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .col.b .step.llm .kind { color: var(--b-ink); font-weight: 600; }
+  .step .desc {
+    font-size: 13px;
+    color: var(--ink);
+    margin: 4px 0 6px;
+  }
+  .step .out {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .step .out::before { content: "→ "; color: var(--faint); }
+
+  .arrow {
+    text-align: center;
+    color: var(--rule);
+    font-size: 18px;
+    line-height: 1;
+    margin: -2px 0 4px;
+  }
+
+  /* footer note */
+  .note {
+    margin-top: 32px;
+    padding: 16px 20px;
+    border: 1px dashed var(--rule);
+    border-radius: 10px;
+    background: #fbf9f3;
+    font-size: 13.5px;
+    color: var(--muted);
+  }
+  .note strong { color: var(--ink); font-weight: 600; }
+  .note code {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    background: #efeadf;
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: var(--ink);
+  }
+
+  /* mobile */
+  @media (max-width: 720px) {
+    body { padding: 28px 16px 56px; }
+    .sources { grid-template-columns: 1fr; }
+    .columns { grid-template-columns: 1fr; gap: 36px; }
+    .trunk .split, .trunk .legs { width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <h1>lettore-doc · le due pipeline</h1>
+  <p class="subtitle">Stesse cartelle sorgenti, due flussi indipendenti che producono output diversi.</p>
+
+  <div class="sources">
+    <div class="source">
+      <div class="source-label">Source · ONEDRIVE</div>
+      <div class="source-name">C:\…\OneDrive - Intrawelt\Documenti - IT</div>
+      <div class="source-note">.docx · .txt · .md · .png</div>
+    </div>
+    <div class="source">
+      <div class="source-label">Source · PORTFOLIO</div>
+      <div class="source-name">J:\…\Portfolio and ongoing studies\IT-RELATED</div>
+      <div class="source-note">.docx · .txt · .md · .png</div>
+    </div>
+  </div>
+
+  <div class="trunk">
+    <div class="vline"></div>
+    <div class="split"></div>
+    <div class="legs"><span class="leg"></span><span class="leg"></span></div>
+  </div>
+
+  <div class="columns">
+
+    <!-- PIPELINE A -->
+    <div class="col a">
+      <h2>Pipeline A · vault Obsidian privato <span class="badge done">fatta</span></h2>
+      <p class="col-sub">Orchestrata da <code style="font-family:var(--mono);font-size:12px">run_pipeline.ps1</code>. Tutta Python deterministica, offline, nessun LLM. Cap. 4 della guida tecnica.</p>
+
+      <div class="step">
+        <div class="row1"><span class="name">parse_docx.py</span><span class="kind">determ.</span></div>
+        <div class="desc">Skeleton + sections-preview a 3 livelli (token-efficient).</div>
+        <div class="out">_intermediate/structure.json · sections/</div>
+      </div>
+      <div class="arrow">↓</div>
+
+      <div class="step">
+        <div class="row1"><span class="name">extract_entities.py</span><span class="kind">determ. + spaCy</span></div>
+        <div class="desc">10 categorie regex italiane + NER it_core_news_sm per PROPER_NOUN.</div>
+        <div class="out">_intermediate/entities.json</div>
+      </div>
+      <div class="arrow">↓</div>
+
+      <div class="step">
+        <div class="row1"><span class="name">build_knowledge_graph.py</span><span class="kind">determ.</span></div>
+        <div class="desc">Grafo pesato (Jaccard, riferimenti, cartella, tempo, titolo) con 6 etichette semantiche.</div>
+        <div class="out">_intermediate/graph.json</div>
+      </div>
+      <div class="arrow">↓</div>
+
+      <div class="step final">
+        <div class="row1"><span class="name">generate_vault.py</span><span class="kind">determ.</span></div>
+        <div class="desc">Una nota .md per documento: frontmatter, summary, indice, link semantici, wiki-link inline.</div>
+        <div class="out">vault-output/  ←  qui vivono i 372 / 441 .md</div>
+      </div>
+    </div>
+
+    <!-- PIPELINE B -->
+    <div class="col b">
+      <h2>Pipeline B · estrazione skill verso skills-repo <span class="badge wip">in corso</span></h2>
+      <p class="col-sub">Aggiorna la tassonomia pubblica su GitHub Pages. Comincia con un passo LLM, poi tutto offline. Cap. 5 della guida tecnica.</p>
+
+      <div class="step llm">
+        <div class="row1"><span class="name">/graphify .</span><span class="kind">LLM · Claude</span></div>
+        <div class="desc">Costruisce un grafo semantico dei documenti. Va lanciato <em>dentro</em> la cartella sorgente, non da E:\lettore-doc.</div>
+        <div class="out">&lt;source&gt;/graphify-out/graph.json</div>
+      </div>
+      <div class="arrow">↓</div>
+
+      <div class="step">
+        <div class="row1"><span class="name">generate_taxonomy_index.py</span><span class="kind">determ.</span></div>
+        <div class="desc">Indicizza la tassonomia attuale dal mkdocs.yml del repo pubblico.</div>
+        <div class="out">_intermediate/taxonomy_index.json</div>
+      </div>
+      <div class="arrow">↓</div>
+
+      <div class="step">
+        <div class="row1"><span class="name">enrich_graph.py</span><span class="kind">determ.</span></div>
+        <div class="desc">Arricchisce il grafo con regex italiane + anonymization_map (AZIENDA_N, PERSONA_N).</div>
+        <div class="out">_intermediate/enriched_graph_&lt;source&gt;.json</div>
+      </div>
+      <div class="arrow">↓</div>
+
+      <div class="step">
+        <div class="row1"><span class="name">map_to_taxonomy.py</span><span class="kind">determ.</span></div>
+        <div class="desc">Classifica ogni nodo come fit · new_capability · new_domain via recall score.</div>
+        <div class="out">_intermediate/taxonomy_diff_&lt;source&gt;.{md,json}</div>
+      </div>
+      <div class="arrow">↓</div>
+
+      <div class="step">
+        <div class="row1"><span class="name">revisione manuale</span><span class="kind">umana</span></div>
+        <div class="desc">Apertura del diff.md in editor: rimuovere falsi positivi, accettare new capability rilevanti.</div>
+        <div class="out">diff revisionato a mano</div>
+      </div>
+      <div class="arrow">↓</div>
+
+      <div class="step final">
+        <div class="row1"><span class="name">export_to_taxonomy.py --apply</span><span class="kind">determ.</span></div>
+        <div class="desc">Inietta le evidenze anonimizzate sotto ## Projects &amp; evidence delle Capability page. Idempotente via ID SHA-256.</div>
+        <div class="out">$LETTERDOC_SKILLS_REPO/docs/**  →  push  →  alesop95.github.io/skills/</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <p style="margin:0 0 8px"><strong>Cosa NON connette le due pipeline.</strong> La pipeline B non legge <code>vault-output/</code>. Legge i documenti originali nelle cartelle sorgente e produce un suo <code>graph.json</code> dentro <code>graphify-out/</code>. I 372/441 .md in <code>vault-output/</code> sono solo il vault privato per la navigazione personale in Obsidian.</p>
+    <p style="margin:0"><strong>Cosa hanno in comune.</strong> Solo le cartelle sorgente. Lo stesso parser di entità italiane (<code>extract_entities.py</code>) viene riusato in entrambe, ma in B viene richiamato da dentro <code>enrich_graph.py</code> sul <code>graph.json</code> di graphify, mentre in A gira diretto sui <code>.docx</code>.</p>
+  </div>
+</div>
+
+</body>
+</html>
