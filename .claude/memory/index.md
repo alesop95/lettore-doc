@@ -1,6 +1,6 @@
 # Snapshot
 
-Branch: `main`. Commit di riferimento: `979d674`.
+Branch: `main`. Commit di riferimento: `ab89133`.
 
 ## Stato delle schede
 
@@ -15,4 +15,4 @@ Branch: `main`. Commit di riferimento: `979d674`.
 
 ## Prossima azione concreta
 
-Adozione dello standard completata. Al prossimo cambiamento di codice, riconciliare le schede con `sync-context` e bumpare `last-verified-commit`. Popolare `current-work.md` all'apertura della prossima feature.
+Schede ri-ancorate a `ab89133`. Al prossimo cambiamento di codice o configurazione, rilanciare `sync-context` e bumpare. Popolare `current-work.md` all'apertura della prossima feature; le candidate sono in `roadmap.md`.

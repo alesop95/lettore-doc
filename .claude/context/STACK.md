@@ -8,7 +8,7 @@ covers-paths:
   - run_pipeline.sh
   - sources.yml
   - requirements.txt
-last-verified-commit: 979d674
+last-verified-commit: ab89133
 source-doc: GUIDA-TECNICA.md
 ---
 
@@ -18,7 +18,7 @@ Motore privato di analisi documentale in Python. Legge documenti aziendali (`.do
 
 ## Deterministico prima del linguistico
 
-Il lavoro deterministico (parsing, estrazione entita con regex, calcolo del grafo, generazione Markdown, classificazione) sta in script Python: offline, riproducibile, a costo zero di token, con stati intermedi JSON ispezionabili sotto `_intermediate/`. Il lavoro linguistico (estrazione semantica via graphify, sintesi narrative) usa il modello e consuma token.
+Il lavoro deterministico (parsing, estrazione entita, calcolo del grafo, generazione Markdown, classificazione) sta in script Python: offline, riproducibile, a costo zero di token LLM, con stati intermedi JSON ispezionabili sotto `_intermediate/`. L'estrazione entita combina regex (email, telefoni, URL, codici fiscali, ragioni sociali) e NER spaCy locale (`it_core_news_lg`, label `PER` per i nomi di persona, con fallback regex+stoplist quando il modello non e installato): un modello statistico locale, non un LLM remoto. Il lavoro linguistico (estrazione semantica via graphify, sintesi narrative) usa il modello e consuma token.
 
 ## Disclosure progressiva a tre livelli
 
