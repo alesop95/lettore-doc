@@ -6,7 +6,7 @@ covers-paths:
   - scripts/enrich_graph.py
   - scripts/export_to_taxonomy.py
   - .gitignore
-last-verified-commit: ab89133
+last-verified-commit: cb35334
 source-doc: GUIDA-TECNICA.md
 ---
 

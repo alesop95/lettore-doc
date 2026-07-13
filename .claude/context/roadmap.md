@@ -4,7 +4,7 @@ generated-from-branch: main
 generated-date: 2026-06-17
 covers-paths:
   - scripts/**
-last-verified-commit: ab89133
+last-verified-commit: cb35334
 source-doc: GUIDA-TECNICA.md
 ---
 

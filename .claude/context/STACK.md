@@ -8,7 +8,7 @@ covers-paths:
   - run_pipeline.sh
   - sources.yml
   - requirements.txt
-last-verified-commit: ab89133
+last-verified-commit: cb35334
 source-doc: GUIDA-TECNICA.md
 ---
 
