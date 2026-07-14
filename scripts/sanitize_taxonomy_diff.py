@@ -176,6 +176,26 @@ def main() -> None:
                 label = ""
 
             keep, anon_label, reason = evaluate_label(label, anon_map, args.min_chars)
+
+            # Per new_capability: anche se il suggested_name e' pulito, i node
+            # labels interni finiscono nel file (Responsibilities). Filtra i
+            # nodes con residue e, se non ne rimane nessuno, droppa l'intera.
+            if keep and kind == "new_capability":
+                filtered_nodes = []
+                for n in item.get("nodes", []):
+                    n_label = n.get("label", "")
+                    _, _, n_reason = evaluate_label(n_label, anon_map, min_chars=1)
+                    if n_reason == "ok":
+                        filtered_nodes.append(n)
+                    # nodi troppo corti dopo anon: li teniamo (non sono un leak)
+                    elif n_reason == "too-short-after-anon":
+                        filtered_nodes.append(n)
+                    # nodi con residue: droppati silenziosamente
+                if not filtered_nodes:
+                    keep, reason = False, "all-nodes-have-residue"
+                else:
+                    item["nodes"] = filtered_nodes
+
             if keep:
                 kept.append(item)
                 stats[kind]["kept"] += 1

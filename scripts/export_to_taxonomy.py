@@ -271,6 +271,16 @@ def main() -> None:
     if not docs_dir.exists():
         docs_dir = skills_repo  # Fallback
 
+    # Line-ending dominante del docs-dir: campionato da un file esistente,
+    # usato quando creiamo new capability file da zero. I file preesistenti
+    # mantengono il proprio original_newline detectato per file.
+    _sample = next(docs_dir.rglob("*.md"), None)
+    if _sample is not None:
+        _raw = _sample.read_bytes()
+        repo_default_newline = "\r\n" if b"\r\n" in _raw else "\n"
+    else:
+        repo_default_newline = "\n"
+
     diff = json.loads(diff_path.read_text(encoding="utf-8"))
 
     mode_label = "APPLY" if apply_mode else "DRY-RUN"
@@ -324,6 +334,11 @@ def main() -> None:
             missing_files += 1
             continue
 
+        # Rileva il line-ending nativo del file prima di leggere in modo
+        # normalizzato: quando riscriveremo useremo lo stesso, evitando di
+        # generare un diff CRLF↔LF su file preesistenti.
+        raw_bytes = md_path.read_bytes()
+        original_newline = "\r\n" if b"\r\n" in raw_bytes else "\n"
         md_text = md_path.read_text(encoding="utf-8")
         original_text = md_text
         cap_slug = Path(cap_file).stem
@@ -358,7 +373,7 @@ def main() -> None:
                 print(f"    + {lbl}", file=sys.stderr)
 
             if apply_mode and md_text != original_text:
-                md_path.write_text(md_text, encoding="utf-8")
+                md_path.write_text(md_text, encoding="utf-8", newline=original_newline)
         else:
             pass  # Nessuna modifica per questo file
 
@@ -370,10 +385,13 @@ def main() -> None:
 
     for nc in new_caps:
         domain_dir    = nc.get("domain", {}).get("dir", "")
-        sug_slug      = nc.get("suggested_slug", "new-capability")
         sug_name_raw  = nc.get("suggested_name", "New Capability")
         sug_name      = apply_anon(sug_name_raw, anon_map)
-        sug_file      = nc.get("suggested_file", f"{domain_dir}/{sug_slug}.md")
+        # Ricava slug e file path dal NAME ANONIMIZZATO, non dal suggested_slug
+        # del diff (calcolato pre-anon): altrimenti IP e hostname finiscono
+        # nel nome del file esposto pubblicamente.
+        sug_slug      = re.sub(r"[^a-z0-9]+", "-", sug_name.lower()).strip("-") or "new-capability"
+        sug_file      = f"{domain_dir}/{sug_slug}.md"
         domain_name   = nc.get("domain", {}).get("name", "?")
 
         new_md_path   = docs_dir / sug_file
@@ -391,7 +409,7 @@ def main() -> None:
             else:
                 new_md_path.parent.mkdir(parents=True, exist_ok=True)
                 content = build_new_capability_file(nc, anon_map)
-                new_md_path.write_text(content, encoding="utf-8")
+                new_md_path.write_text(content, encoding="utf-8", newline=repo_default_newline)
                 print(f"    ✓ Creato: {new_md_path}", file=sys.stderr)
         else:
             print(f"    [dry-run] avrebbe creato: {new_md_path}", file=sys.stderr)
