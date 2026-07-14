@@ -1,6 +1,6 @@
 # Snapshot
 
-Branch: `main`. Commit di riferimento: `cb35334`.
+Branch: `main`. Commit di riferimento: `bbf19bb`.
 
 ## Stato delle schede
 
@@ -15,4 +15,4 @@ Branch: `main`. Commit di riferimento: `cb35334`.
 
 ## Prossima azione concreta
 
-Schede ri-ancorate a `cb35334`. Al prossimo cambiamento di codice o configurazione, rilanciare `sync-context` e bumpare. Popolare `current-work.md` all'apertura della prossima feature; le candidate sono in `roadmap.md`.
+Schede ri-ancorate a `bbf19bb` dopo il salto "anonimizzazione robusta + gate residue" e chiusura ciclo `ARCHITETTURA SERVER-CLOUD-LINEE` (skills-repo `bbd361e`). Al prossimo cambiamento di codice o configurazione, rilanciare `sync-context` e bumpare. Popolare `current-work.md` all'apertura della prossima feature; le candidate sono in `roadmap.md`.

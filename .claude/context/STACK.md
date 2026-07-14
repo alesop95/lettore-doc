@@ -8,7 +8,7 @@ covers-paths:
   - run_pipeline.sh
   - sources.yml
   - requirements.txt
-last-verified-commit: cb35334
+last-verified-commit: bbf19bb
 source-doc: GUIDA-TECNICA.md
 ---
 
@@ -26,6 +26,10 @@ I documenti non si leggono mai interi: `parse_docx.py` espone Livello 1 (schelet
 
 ## Componenti
 
-Gli script in `scripts/` coprono parsing token-efficient, estrazione entita, grafo pesato, generazione del vault e la pipeline di estrazione skill (`enrich_graph`, `generate_taxonomy_index`, `map_to_taxonomy`, `export_to_taxonomy`). Ambiente Python isolato in `.venv/`; gli orchestratori `run_pipeline.ps1/.sh` invocano il Python del venv per path completo. Skill di progetto `grafo-conoscenza` e `parsing-docx`, agent `lettore-documentazione`, e `graphify` (esterno) per il grafo semantico.
+Gli script in `scripts/` coprono parsing token-efficient, estrazione entita, grafo pesato, generazione del vault e la pipeline di estrazione skill (`enrich_graph`, `generate_taxonomy_index`, `map_to_taxonomy`, `sanitize_taxonomy_diff`, `export_to_taxonomy`). Ambiente Python isolato in `.venv/`; gli orchestratori `run_pipeline.ps1/.sh` invocano il Python del venv per path completo. Il launcher `scripts/start_graphify.ps1` apre una sessione Claude Code dentro una subfolder sorgente, con parametro `-Account` per selezionare l'account Claude su macchine multi-account. Skill di progetto `grafo-conoscenza` e `parsing-docx`, agent `lettore-documentazione`, e `graphify` (esterno) per il grafo semantico.
+
+## Anonimizzazione multi-strato
+
+`extract_entities.py` estrae dieci categorie (ACRONYM, COMPANY, PROPER_NOUN, PROJECT_CODE, LAW_REF, DATE, AMOUNT, EMAIL, URL, DOC_REF) piu due dedicate all'infrastruttura (IP_ADDR dotted-quad con CIDR opzionale, HOSTNAME con prefissi WIN/SRV/PC-/NAS/USG/VM e forma dashed uppercase). `enrich_graph.py` costruisce una `anonymization_map` con placeholder `[AZIENDA_N]`, `[PERSONA_N]`, `[EMAIL_N]`, `[IP_N]`, `[HOSTNAME_N]`; `map_to_taxonomy.py` la propaga nel `taxonomy_diff.json`, `sanitize_taxonomy_diff.py` la applica e scarta entries con residui non catturati dalla mappa (dominio aziendale nudo, nomi fornitori, sede fisica, IP abbreviato tra parentesi, hostname con spazi), `export_to_taxonomy.py` la applica ai label H3, ai name H1 delle new-capability, al community label e al preview del body, oltre a rigenerare lo slug/file path dal name anonimizzato per non esporre IP/hostname nel nome del file pubblicato.
 
 Il dettaglio (formule, pesi, categorie, comandi) e in `GUIDA-TECNICA.md`.
