@@ -154,6 +154,18 @@ Usare il launcher dedicato:
 Apre Claude Code dentro la subfolder con `--model claude-opus-4-7`; dentro la
 sessione lanciare poi `/graphify .`.
 
+Sulle macchine con piu' account Claude Code configurati (directory
+`%USERPROFILE%\.claude-<name>`) si sceglie l'account con `-Account`:
+
+```powershell
+.\scripts\start_graphify.ps1 -SourceFolder "..." -Account account2
+```
+
+Lo script setta `CLAUDE_CONFIG_DIR` solo per il processo figlio: la
+selezione vale unicamente per quella sessione graphify e non modifica lo
+stato dell'utente. Se `-Account` e' omesso, la sessione eredita il default
+del terminale corrente.
+
 ---
 
 ## Uso - Pipeline di estrazione skill (aggiornamento tassonomia)
