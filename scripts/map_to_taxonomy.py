@@ -506,8 +506,17 @@ def main() -> None:
             return [sanitize(i) for i in obj]
         return obj
 
+    # Propaga la anonymization_map dell'enriched_graph nel diff, cosi'
+    # export_to_taxonomy la applica ai label/name/preview prima di scriverli
+    # nel repo pubblico.
+    diff_out = {
+        **results,
+        "anonymization_map":
+            enriched_graph.get("graph", {}).get("anonymization_map", {}),
+    }
+
     json_path.write_text(
-        json.dumps(sanitize(results), ensure_ascii=False, indent=2),
+        json.dumps(sanitize(diff_out), ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
     print(f"Scritto: {json_path}", file=sys.stderr)

@@ -1,0 +1,223 @@
+#!/usr/bin/env python3
+"""
+sanitize_taxonomy_diff.py - Gate finale prima dell'export sul skills-repo.
+
+Post-processing su taxonomy_diff.json: applica la anonymization_map propagata
+da map_to_taxonomy, poi scarta le entries che dopo anonimizzazione:
+
+  1) hanno un label con troppo poco contenuto significativo (< N caratteri
+     alfanumerici, esclusi placeholder [X_N]) — es. "LAN [AZIENDA_1] [IP_1]
+     (server)" diventa "LAN  (server)" -> troppo scarno per una pagina
+     pubblica;
+
+  2) contengono ANCORA pattern residui riconoscibili come sensibili (IP
+     dotted-quad, email, hostname stile WIN*/USG*/NAS*/SRV*/VM<num>) che la
+     mappa non ha catturato (one-off, casi di parsing anomali). Si scarta
+     invece di lasciar passare — piu' sicuro perdere qualche entry marginale
+     che pubblicare un IP interno.
+
+Non modifica il file .md di diff (che resta strumento di revisione manuale
+in chiaro): agisce solo sul JSON che finisce a export_to_taxonomy.
+
+Uso:
+  python scripts/sanitize_taxonomy_diff.py \\
+    --input  _intermediate/taxonomy_diff.json \\
+    --output _intermediate/taxonomy_diff.sanitized.json
+"""
+
+import argparse
+import json
+import re
+import sys
+from pathlib import Path
+
+
+PLACEHOLDER_RE = re.compile(
+    r"\[(?:AZIENDA|PERSONA|EMAIL|IP|HOSTNAME)_\d+\]"
+)
+
+# Residue patterns: se dopo anon il label li contiene ancora, la mappa ha
+# mancato il caso specifico -> non lasciamolo passare comunque. Dict con
+# etichetta esplicita cosi' il log dice esattamente perche' un item e' droppato.
+#
+# Le prime tre (IP/EMAIL/HOSTNAME) sono generiche. Le successive sono
+# specifiche del contesto Intrawelt: nomi/domini/sede che la anonymization_map
+# di enrich_graph non cattura perche' compaiono come varianti nude (senza
+# suffisso ragione sociale) o come domini estratti da URL non tokenizzati.
+# Se il progetto vuole coprire altre aziende, aggiungere qui i pattern
+# corrispondenti.
+LEAK_PATTERNS = {
+    "residue-ip":       re.compile(r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(?:/\d{1,2})?\b"),
+    "residue-email":    re.compile(r"\b[\w\.\-]+@[\w\.\-]+\.\w{2,}\b"),
+    "residue-hostname": re.compile(
+        r"\b("
+        r"WIN(?:SRV|GROUP|SERVER|DC|SQL|EX|HOST)?[A-Z0-9][A-Z0-9\-]{2,}"
+        r"|SRV[-_]?[A-Z0-9][A-Z0-9\-]{1,}"
+        r"|PC[-_][A-Z0-9][A-Z0-9\-]{1,}"
+        r"|NAS[-_]?[A-Z0-9][A-Z0-9\-]{0,}"
+        r"|USG[-_]?[A-Z0-9][A-Z0-9\-]{0,}"
+        r"|VM\d{1,4}(?:[-_][A-Z0-9\-]+)?"
+        r"|DC\d{1,2}(?:[-_][A-Z0-9\-]+)?"
+        r")\b"
+    ),
+    "residue-domain-intrawelt":  re.compile(r"\bintrawelt\.(?:com|it|de)\b", re.IGNORECASE),
+    "residue-company-intrawelt": re.compile(r"\bIntrawelt\b"),
+    "residue-company-fastnet":   re.compile(r"\bFastnet\b", re.IGNORECASE),
+    "residue-vendor-punto-inf":  re.compile(r"\bPunto\s+Informatica\b", re.IGNORECASE),
+    "residue-vendor-vianova":    re.compile(r"\bVianova\b", re.IGNORECASE),
+    "residue-site-via-pescolla": re.compile(r"\bVia\s+Pescolla\b", re.IGNORECASE),
+    "residue-site-elpidio":      re.compile(r"\bPorto\s+Sant['\s]?Elpidio\b", re.IGNORECASE),
+    # Ottetto finale IP tra parentesi tipo '(.168)' o '(.177,' — forma sintetica
+    # di graphify per abbreviare "192.168.20.168": non e' un IP full quindi il
+    # regex dotted-quad non lo cattura, ma resta un leak parziale.
+    "residue-ip-abbreviated":    re.compile(r"\(\.\d{1,3}\b"),
+    # NAS INTRA / NAS INTRA2 / NAS INTRA3 / NAS FTP (con spazio o dash),
+    # sfuggono al pattern HOSTNAME che vuole tutto uppercase attaccato.
+    "residue-host-nas-named":    re.compile(r"\bNAS[\s\-]+(?:INTRA\d?|FTP|HERO)\b", re.IGNORECASE),
+    # VM Ubuntu-YYYY-NAME (es. Ubuntu-1404-DOMV, Ubuntu-1204-eGetrad) — nome
+    # macchina non-uppercase quindi HOSTNAME_RE non lo cattura.
+    "residue-vm-ubuntu-named":   re.compile(r"\bUbuntu-\d{3,4}-[A-Za-z]{3,}\b"),
+    # Applicativi/servizi interni citati per nome (eGetrad = gestionale storico).
+    "residue-app-egetrad":       re.compile(r"\begetrad\b", re.IGNORECASE),
+}
+
+
+def apply_anon(text: str, anon_map: dict) -> str:
+    if not text or not anon_map:
+        return text
+    for original in sorted(anon_map, key=len, reverse=True):
+        text = re.sub(re.escape(original), anon_map[original], text)
+    return text
+
+
+def significant_chars(text: str) -> int:
+    """Numero di caratteri alfanumerici esclusi i placeholder."""
+    stripped = PLACEHOLDER_RE.sub("", text)
+    return sum(1 for c in stripped if c.isalnum())
+
+
+def has_residue(text: str) -> str | None:
+    """Ritorna il nome del primo pattern residuo trovato (o None)."""
+    for name, rx in LEAK_PATTERNS.items():
+        if rx.search(text):
+            return name
+    return None
+
+
+def evaluate_label(label: str, anon_map: dict, min_chars: int):
+    """Ritorna (keep: bool, anon_label: str, reason: str)."""
+    anon_label = apply_anon(label, anon_map)
+    residue = has_residue(anon_label)
+    if residue:
+        return False, anon_label, residue
+    if significant_chars(anon_label) < min_chars:
+        return False, anon_label, "too-short-after-anon"
+    return True, anon_label, "ok"
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Filtra taxonomy_diff.json scartando entries con contenuto "
+            "insufficiente o residui sensibili dopo anonimizzazione."
+        )
+    )
+    parser.add_argument("--input",  required=True, help="Path a taxonomy_diff.json")
+    parser.add_argument("--output", required=True, help="Path per taxonomy_diff sanitized")
+    parser.add_argument("--min-chars", type=int, default=10,
+                        help="Minimo caratteri alfanumerici significativi nel label "
+                             "dopo anonimizzazione (default 10)")
+    args = parser.parse_args()
+
+    in_path  = Path(args.input).resolve()
+    out_path = Path(args.output).resolve()
+
+    if not in_path.exists():
+        print(f"ERRORE: input non trovato: {in_path}", file=sys.stderr)
+        sys.exit(1)
+
+    diff = json.loads(in_path.read_text(encoding="utf-8"))
+    anon_map = diff.get("anonymization_map", {})
+
+    if not anon_map:
+        print(
+            "AVVISO: taxonomy_diff.json senza anonymization_map. "
+            "Il filtro applichera' comunque i pattern residui ma non le "
+            "sostituzioni. Rigenera il diff con map_to_taxonomy aggiornato "
+            "per anonimizzazione piena.",
+            file=sys.stderr,
+        )
+
+    print(f"Input:       {in_path}", file=sys.stderr)
+    print(f"anon-map:    {len(anon_map)} voci", file=sys.stderr)
+    print(f"min-chars:   {args.min_chars}", file=sys.stderr)
+    print("", file=sys.stderr)
+
+    # -----------------------------------------------------------------------
+    # Filtro
+    # -----------------------------------------------------------------------
+    stats = {
+        "fit":            {"kept": 0, "dropped": {}, "examples_dropped": []},
+        "new_capability": {"kept": 0, "dropped": {}, "examples_dropped": []},
+        "new_domain":     {"kept": 0, "dropped": {}, "examples_dropped": []},
+    }
+
+    def filter_bucket(items, kind):
+        kept = []
+        for item in items:
+            if kind == "fit":
+                node  = item.get("node", {})
+                label = node.get("label", "")
+            elif kind == "new_capability":
+                label = item.get("suggested_name", "")
+            elif kind == "new_domain":
+                label = item.get("suggested_domain", "")
+            else:
+                label = ""
+
+            keep, anon_label, reason = evaluate_label(label, anon_map, args.min_chars)
+            if keep:
+                kept.append(item)
+                stats[kind]["kept"] += 1
+            else:
+                stats[kind]["dropped"][reason] = stats[kind]["dropped"].get(reason, 0) + 1
+                if len(stats[kind]["examples_dropped"]) < 5:
+                    stats[kind]["examples_dropped"].append({
+                        "original":   label[:120],
+                        "anonymized": anon_label[:120],
+                        "reason":     reason,
+                    })
+        return kept
+
+    diff["fit"]            = filter_bucket(diff.get("fit",            []), "fit")
+    diff["new_capability"] = filter_bucket(diff.get("new_capability", []), "new_capability")
+    diff["new_domain"]     = filter_bucket(diff.get("new_domain",     []), "new_domain")
+
+    # -----------------------------------------------------------------------
+    # Riepilogo
+    # -----------------------------------------------------------------------
+    for kind in ("fit", "new_capability", "new_domain"):
+        s = stats[kind]
+        dropped_total = sum(s["dropped"].values())
+        print(f"{kind:15s}: {s['kept']} kept, {dropped_total} dropped {s['dropped']}",
+              file=sys.stderr)
+        for ex in s["examples_dropped"]:
+            print(f"   drop [{ex['reason']}]: "
+                  f"'{ex['original']}' -> '{ex['anonymized']}'",
+                  file=sys.stderr)
+
+    diff["sanitization_stats"] = {
+        kind: {k: v for k, v in stats[kind].items() if k != "examples_dropped"}
+        for kind in stats
+    }
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(
+        json.dumps(diff, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    print(f"\nScritto: {out_path}", file=sys.stderr)
+
+
+if __name__ == "__main__":
+    main()

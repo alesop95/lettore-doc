@@ -17,7 +17,13 @@ Categorie:
 - AMOUNT        importi in euro
 - EMAIL         indirizzi email
 - URL           web
+- IP_ADDR       indirizzi IPv4 (192.168.20.5, 10.1.116.3/24)
+- HOSTNAME      hostname/machine name (WINGROUPSHARE, USG-FLEX-500, PC-GIGI, VM101)
 - DOC_REF       riferimenti a documenti ("vedi specifica X.docx")
+
+Le categorie EMAIL, IP_ADDR, HOSTNAME sono usate da enrich_graph per estendere
+la anonymization_map con placeholder [EMAIL_N], [IP_N], [HOSTNAME_N] cosi da
+non far trapelare configurazioni infrastrutturali nelle evidenze esportate.
 """
 
 import argparse
@@ -132,6 +138,47 @@ AMOUNT_SYMBOL_RE = re.compile(r"\u20AC\s*([\d\.\,]+(?:\,\d{2})?)|([\d\.\,]+(?:\,
 
 EMAIL_RE = re.compile(r"\b[\w\.\-]+@[\w\.\-]+\.\w{2,}\b")
 URL_RE = re.compile(r"https?://[^\s\)\]]+|www\.[^\s\)\]]+")
+
+# IPv4 dotted-quad, con CIDR opzionale. Cattura anche IP di rete tipo 192.168.20.0/24.
+# Ottetto 0-255 ma il pattern accetta 0-999 e filtra a valle: piu' semplice del RFC-esatto
+# e sufficiente per lo scopo di anonimizzazione (falsi positivi = altro numero anonimizzato,
+# non pericoloso; falsi negativi = leak, pericoloso).
+IP_ADDR_RE = re.compile(
+    r"(?<![\d\.])"
+    r"(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(?:/\d{1,2})?)"
+    r"(?![\d\.])"
+)
+
+# HOSTNAME - due strategie in OR:
+#  1. Prefisso "infrastrutturale" + resto: WIN* / SRV* / PC- / NAS* / USG* / VM<num> / DC* / HOST*.
+#  2. Uppercase con dash (>=1) e almeno un digit o >=8 char: USG-FLEX-500, XGS2220-30HP-EU0101F.
+# Il filtro TECH_BRAND_STOPWORDS + HOSTNAME_STOPLIST tolgono i falsi positivi tipici.
+HOSTNAME_PREFIX_RE = re.compile(
+    r"\b("
+    r"WIN(?:SRV|GROUP|SERVER|DC|SQL|EX|HOST)?[A-Z0-9][A-Z0-9\-]{2,}"
+    r"|SRV[-_]?[A-Z0-9][A-Z0-9\-]{1,}"
+    r"|PC[-_][A-Z0-9][A-Z0-9\-]{1,}"
+    r"|NAS[-_]?[A-Z0-9][A-Z0-9\-]{0,}"
+    r"|USG[-_]?[A-Z0-9][A-Z0-9\-]{0,}"
+    r"|VM\d{1,4}(?:[-_][A-Z0-9\-]+)?"
+    r"|DC\d{1,2}(?:[-_][A-Z0-9\-]+)?"
+    r"|HOST[-_]?[A-Z0-9][A-Z0-9\-]{1,}"
+    r")\b"
+)
+HOSTNAME_DASHED_RE = re.compile(
+    r"\b([A-Z][A-Z0-9]{1,}(?:-[A-Z0-9]+){1,}[A-Z0-9]?)\b"
+)
+HOSTNAME_STOPLIST = {
+    # Codici versione / prodotto che matchano il pattern dashed ma non sono hostname.
+    "IT-EN", "EN-IT", "UTF-8", "UTF-16", "ISO-8859", "X-64", "X86-64",
+    "WIN-32", "WIN-64", "MAC-OS", "IPV-4", "IPV-6",
+    "RFC-822", "RFC-2822", "RFC-5321", "RFC-5322",
+    "TCP-IP", "IP-SEC", "HTTP-2", "HTTP-3",
+    "IEEE-802", "IEEE-8021X",
+    "USB-3", "USB-C", "HDMI-2", "PCI-E", "PCI-EX", "M-2",
+    "DDR-4", "DDR-5", "SATA-3", "SATA-III", "SAS-3",
+    "US-EN", "IT-IT", "EN-US", "EN-GB", "FR-FR", "DE-DE", "ES-ES",
+}
 
 DOC_REF_RE = re.compile(
     r"(?:vedi|cfr\.?|secondo|come\s+da|in\s+base\s+(?:a|al|alla))\s+"
@@ -251,6 +298,41 @@ def extract_from_text(text: str) -> dict[str, list[str]]:
         results["EMAIL"].append(m.group(0))
     for m in URL_RE.finditer(text):
         results["URL"].append(m.group(0))
+
+    for m in IP_ADDR_RE.finditer(text):
+        candidate = m.group(1)
+        # Filtro base: nessun ottetto > 255. Riduce collisioni con version number
+        # (es. 999.98.88), pattern data 2025.03.10, ecc.
+        parts = candidate.split("/")[0].split(".")
+        try:
+            octets = [int(p) for p in parts]
+        except ValueError:
+            continue
+        if any(o > 255 for o in octets):
+            continue
+        results["IP_ADDR"].append(candidate)
+
+    hostname_seen: set[str] = set()
+    for m in HOSTNAME_PREFIX_RE.finditer(text):
+        h = m.group(1)
+        if h in hostname_seen or h in HOSTNAME_STOPLIST:
+            continue
+        if h in TECH_BRAND_STOPWORDS:
+            continue
+        hostname_seen.add(h)
+        results["HOSTNAME"].append(h)
+    for m in HOSTNAME_DASHED_RE.finditer(text):
+        h = m.group(1)
+        if h in hostname_seen or h in HOSTNAME_STOPLIST:
+            continue
+        if h in TECH_BRAND_STOPWORDS:
+            continue
+        # Salta acronimi puri gia' scartati come ACRONYM: se non ha ne' digit
+        # ne' >=3 dash-parts, non e' un hostname credibile.
+        if not any(c.isdigit() for c in h) and h.count("-") < 2:
+            continue
+        hostname_seen.add(h)
+        results["HOSTNAME"].append(h)
 
     for m in DOC_REF_RE.finditer(text):
         results["DOC_REF"].append(m.group(1).strip())

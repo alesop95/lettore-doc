@@ -62,6 +62,27 @@ def stable_id(node_id: str, cap_slug: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Anonimizzazione testi in uscita
+# ---------------------------------------------------------------------------
+
+def apply_anon(text: str, anon_map: dict | None) -> str:
+    """
+    Sostituisce le occorrenze di anon_map nel testo. Ordina per lunghezza
+    decrescente cosi' i match piu' specifici (es. hostname completo)
+    prevalgono sui prefissi corti.
+
+    Vale per QUALUNQUE testo che finisce nel repo pubblico: label H3, name
+    H1 di nuove Capability, community label, preview del body.
+    """
+    if not text or not anon_map:
+        return text
+    for original in sorted(anon_map, key=len, reverse=True):
+        placeholder = anon_map[original]
+        text = re.sub(re.escape(original), placeholder, text)
+    return text
+
+
+# ---------------------------------------------------------------------------
 # Generazione blocco H3 da iniettare
 # ---------------------------------------------------------------------------
 
@@ -78,18 +99,13 @@ def build_evidence_block(
     come ID di idempotenza, e il testo di evidenza anonimizzato.
     """
     sid      = stable_id(node.get("id", node.get("label", "")), cap_slug)
-    label    = node.get("label", "Untitled")
+    label    = apply_anon(node.get("label", "Untitled"), anon_map)
     src_file = node.get("source_file", "")
-    preview  = node.get("text_preview", "").strip()
-
-    # Anonimizzazione del preview
-    if anon_map and preview:
-        for original, placeholder in sorted(anon_map.items(), key=lambda x: -len(x[0])):
-            preview = re.sub(re.escape(original), placeholder, preview)
+    preview  = apply_anon(node.get("text_preview", "").strip(), anon_map)
 
     src_basename = Path(src_file).name if src_file else "-"
     community_line = (
-        f"- **Graph community**: {community_label}\n"
+        f"- **Graph community**: {apply_anon(community_label, anon_map)}\n"
         if community_label
         else ""
     )
@@ -172,25 +188,26 @@ def inject_into_section(md_text: str, block: str) -> str:
 # Generazione file nuovo per new_capability
 # ---------------------------------------------------------------------------
 
-def build_new_capability_file(nc: dict) -> str:
+def build_new_capability_file(nc: dict, anon_map: dict | None = None) -> str:
     """
     Genera il contenuto Markdown di una nuova Capability page
-    seguendo lo schema a 4 H2 standard.
+    seguendo lo schema a 4 H2 standard. Se passata anon_map, la applica a
+    name/preview/labels prima di scrivere.
     """
-    name    = nc.get("suggested_name", "New Capability")
+    name    = apply_anon(nc.get("suggested_name", "New Capability"), anon_map)
     domain  = nc.get("domain", {}).get("name", "Unknown Domain")
     nodes   = nc.get("nodes", [])
 
     # Raccoglie preview dai nodi per Overview
     previews = [
-        n.get("text_preview", "")[:80].replace("\n", " ")
+        apply_anon(n.get("text_preview", "")[:80].replace("\n", " "), anon_map)
         for n in nodes
         if n.get("text_preview")
     ]
     preview_line = previews[0] if previews else ""
 
     # Raccoglie label dei nodi per Responsibilities
-    node_labels = [n.get("label", "") for n in nodes if n.get("label")]
+    node_labels = [apply_anon(n.get("label", ""), anon_map) for n in nodes if n.get("label")]
 
     content = f"""# {name}
 
@@ -263,9 +280,24 @@ def main() -> None:
     print(f"docs-dir:    {docs_dir}", file=sys.stderr)
     print("", file=sys.stderr)
 
-    # Recupera anonymization_map dall'eventuale enriched_graph.json referenziato
-    # (non nel diff, ma passiamo None se non disponibile)
-    anon_map: dict[str, str] = {}
+    # Recupera anonymization_map propagata da map_to_taxonomy.py.
+    # Se il diff e' stato prodotto da una versione vecchia dello script,
+    # la mappa e' vuota e i testi passano in chiaro: in quel caso il dry-run
+    # fara' vedere gli originali e l'utente puo' decidere se rigenerare il
+    # diff con il nuovo map_to_taxonomy prima di --apply.
+    anon_map: dict[str, str] = diff.get("anonymization_map", {})
+    if anon_map:
+        print(f"anon-map:    {len(anon_map)} voci "
+              f"({sum(1 for v in anon_map.values() if v.startswith('[AZIENDA_'))} aziende, "
+              f"{sum(1 for v in anon_map.values() if v.startswith('[PERSONA_'))} persone, "
+              f"{sum(1 for v in anon_map.values() if v.startswith('[EMAIL_'))} email, "
+              f"{sum(1 for v in anon_map.values() if v.startswith('[IP_'))} ip, "
+              f"{sum(1 for v in anon_map.values() if v.startswith('[HOSTNAME_'))} hostname)",
+              file=sys.stderr)
+    else:
+        print("anon-map:    VUOTA (diff senza anonymization_map — rigenerare?)",
+              file=sys.stderr)
+    print("", file=sys.stderr)
 
     # -----------------------------------------------------------------------
     # Processa FIT
@@ -317,7 +349,7 @@ def main() -> None:
 
             block = build_evidence_block(node, cap_slug_item, community_label, anon_map)
             md_text = inject_into_section(md_text, block)
-            newly_injected.append(node.get("label", "?"))
+            newly_injected.append(apply_anon(node.get("label", "?"), anon_map))
             injected_count += 1
 
         if newly_injected:
@@ -339,7 +371,8 @@ def main() -> None:
     for nc in new_caps:
         domain_dir    = nc.get("domain", {}).get("dir", "")
         sug_slug      = nc.get("suggested_slug", "new-capability")
-        sug_name      = nc.get("suggested_name", "New Capability")
+        sug_name_raw  = nc.get("suggested_name", "New Capability")
+        sug_name      = apply_anon(sug_name_raw, anon_map)
         sug_file      = nc.get("suggested_file", f"{domain_dir}/{sug_slug}.md")
         domain_name   = nc.get("domain", {}).get("name", "?")
 
@@ -357,7 +390,7 @@ def main() -> None:
                 print(f"    ⚠ File già esistente, salto la creazione", file=sys.stderr)
             else:
                 new_md_path.parent.mkdir(parents=True, exist_ok=True)
-                content = build_new_capability_file(nc)
+                content = build_new_capability_file(nc, anon_map)
                 new_md_path.write_text(content, encoding="utf-8")
                 print(f"    ✓ Creato: {new_md_path}", file=sys.stderr)
         else:
@@ -371,7 +404,8 @@ def main() -> None:
         print(f"\n--- NEW DOMAIN: {len(new_doms)} suggeriti (azione manuale) ---",
               file=sys.stderr)
         for nd in new_doms:
-            print(f"  {nd.get('suggested_domain', '?')} "
+            nd_name = apply_anon(nd.get('suggested_domain', '?'), anon_map)
+            print(f"  {nd_name} "
                   f"({len(nd.get('nodes', []))} nodi) - valuta manualmente",
                   file=sys.stderr)
 

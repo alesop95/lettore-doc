@@ -90,22 +90,32 @@ def build_anonymization_map(
     all_entities: dict[str, list[dict]],
 ) -> dict[str, str]:
     """
-    Costruisce {nome_reale: placeholder} per COMPANY e PROPER_NOUN.
+    Costruisce {nome_reale: placeholder} per COMPANY, PROPER_NOUN, EMAIL,
+    IP_ADDR, HOSTNAME.
 
-    Ordina per frequenza decrescente in modo che i nomi più citati
-    ricevano il numero più basso (AZIENDA_1 = la più citata).
+    Ordina per frequenza decrescente in modo che i valori piu' citati ricevano
+    il numero piu' basso ([AZIENDA_1] = la piu' citata, ecc.).
+
+    Le categorie EMAIL/IP_ADDR/HOSTNAME sono incluse per evitare che
+    configurazioni infrastrutturali (dominio interno, IP LAN/VPN, hostname di
+    server) trapelino nelle evidenze esportate sul skills-repo pubblico.
     """
     anon_map: dict[str, str] = {}
-    company_counter = 0
-    person_counter = 0
 
-    for item in all_entities.get("COMPANY", []):
-        company_counter += 1
-        anon_map[item["value"]] = f"[AZIENDA_{company_counter}]"
+    def _register(items, prefix):
+        counter = 0
+        for item in items:
+            value = item["value"]
+            if value in anon_map:
+                continue
+            counter += 1
+            anon_map[value] = f"[{prefix}_{counter}]"
 
-    for item in all_entities.get("PROPER_NOUN", []):
-        person_counter += 1
-        anon_map[item["value"]] = f"[PERSONA_{person_counter}]"
+    _register(all_entities.get("COMPANY",     []), "AZIENDA")
+    _register(all_entities.get("PROPER_NOUN", []), "PERSONA")
+    _register(all_entities.get("EMAIL",       []), "EMAIL")
+    _register(all_entities.get("IP_ADDR",     []), "IP")
+    _register(all_entities.get("HOSTNAME",    []), "HOSTNAME")
 
     return anon_map
 
@@ -225,9 +235,14 @@ def main() -> None:
     anon_map: dict[str, str] = {}
     if not args.no_anonymize:
         anon_map = build_anonymization_map(global_entities)
+        n_az   = sum(1 for v in anon_map.values() if v.startswith("[AZIENDA_"))
+        n_ps   = sum(1 for v in anon_map.values() if v.startswith("[PERSONA_"))
+        n_em   = sum(1 for v in anon_map.values() if v.startswith("[EMAIL_"))
+        n_ip   = sum(1 for v in anon_map.values() if v.startswith("[IP_"))
+        n_host = sum(1 for v in anon_map.values() if v.startswith("[HOSTNAME_"))
         print(f"Anonymization map: {len(anon_map)} voci "
-              f"({sum(1 for v in anon_map.values() if 'AZIENDA' in v)} aziende, "
-              f"{sum(1 for v in anon_map.values() if 'PERSONA' in v)} persone)",
+              f"({n_az} aziende, {n_ps} persone, {n_em} email, "
+              f"{n_ip} ip, {n_host} hostname)",
               file=sys.stderr)
     else:
         print("Anonimizzazione disabilitata (--no-anonymize)", file=sys.stderr)
