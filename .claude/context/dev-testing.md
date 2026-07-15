@@ -8,7 +8,7 @@ covers-paths:
   - run_pipeline.sh
   - setup.ps1
   - setup.sh
-last-verified-commit: 904f831
+last-verified-commit: 233c39c
 source-doc: GUIDA-TECNICA.md
 ---
 

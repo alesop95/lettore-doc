@@ -5,7 +5,7 @@ generated-date: 2026-06-17
 covers-paths:
   - scripts/export_to_taxonomy.py
   - scripts/generate_taxonomy_index.py
-last-verified-commit: 904f831
+last-verified-commit: 233c39c
 source-doc: GUIDA-TECNICA.md
 ---
 

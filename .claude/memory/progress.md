@@ -2,6 +2,10 @@
 
 > Append-only, ordine cronologico inverso.
 
+## 2026-07-15 — Bump schede a `233c39c`
+
+Sync-context da `904f831` a `233c39c`. Due commit intermedi: `3c0dc29` (nuovo `.graphifyignore` in root) e `233c39c` (regola in `CLAUDE.md` che vincola l'allineamento manuale con `.gitignore`). Nessuna `covers-paths` cita esplicitamente questi file, ma `design-and-security.md` copre `.gitignore` e nella sezione "Separazione dei piani dati" tratta `_intermediate/` come gitignored per privacy: `.graphifyignore` e' la controparte per il piano graphify. Edit chirurgico su quella sezione della scheda per aggiungere una frase sul confine dedicato di graphify (indicizza `_intermediate/src/` sanitizzato, esclude venv/vault-output/.env/cache); aggiunto `.graphifyignore` ai `covers-paths` della scheda cosi' il prossimo drift lo intercetta direttamente. Bump di checkpoint sulle altre cinque schede (STACK, deployment, dev-testing, current-work, roadmap) senza edit di contenuto.
+
 ## 2026-07-15 — Aggiunto `.graphifyignore` e regola di allineamento
 
 Committato `.graphifyignore` finora untracked in root: copia intenzionale di `.gitignore` senza `_intermediate/`, perche' graphify deve indicizzare i sorgenti sanitizzati in `_intermediate/src/<subfolder>/` che invece git esclude per privacy. Aggiunta in `CLAUDE.md` sezione "Regole operative" una nuova voce che vincola l'allineamento manuale delle due liste, dichiarando `_intermediate/` come unica differenza intenzionale. Il file era gia' operativo da tempo (usato nelle sessioni graphify) ma non versionato: il commit rende visibile il drift nel `git diff` quando una delle due liste viene toccata senza l'altra.

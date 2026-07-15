@@ -6,7 +6,8 @@ covers-paths:
   - scripts/enrich_graph.py
   - scripts/export_to_taxonomy.py
   - .gitignore
-last-verified-commit: 904f831
+  - .graphifyignore
+last-verified-commit: 233c39c
 source-doc: GUIDA-TECNICA.md
 ---
 
@@ -26,7 +27,7 @@ Fra `map_to_taxonomy.py` e `export_to_taxonomy.py --apply` c'e' un passaggio obb
 
 ## Separazione dei piani dati
 
-`_intermediate/` (derivati rigenerabili, gitignored) contro `vault-output/` (vault navigabile e annotabile a mano, gitignored): si re-indicizza senza perdere annotazioni manuali.
+`_intermediate/` (derivati rigenerabili, gitignored) contro `vault-output/` (vault navigabile e annotabile a mano, gitignored): si re-indicizza senza perdere annotazioni manuali. Il piano graphify ha un confine dedicato: `.graphifyignore` replica `.gitignore` come lista di esclusione ma tiene volutamente indicizzabile `_intermediate/src/`, che contiene i sorgenti gia' sanitizzati; le due liste vanno mantenute allineate (regola operativa in `CLAUDE.md`) perche' graphify non finisca a indicizzare `.venv/`, `vault-output/`, `.env` o cache di sviluppo. E' un confine di privacy secondario al gitignore ma coerente con lo stesso principio: cio che sta fuori dal repo pubblico non deve entrare nel grafo semantico.
 
 ## Segreti
 

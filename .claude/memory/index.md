@@ -1,6 +1,6 @@
 # Snapshot
 
-Branch: `main`. Commit di riferimento: `904f831`.
+Branch: `main`. Commit di riferimento: `233c39c`.
 
 ## Stato delle schede
 
@@ -15,4 +15,4 @@ Branch: `main`. Commit di riferimento: `904f831`.
 
 ## Prossima azione concreta
 
-Schede bumpate a `904f831` (checkpoint dopo `generate_taxonomy_index`: supporto nav MkDocs a 3 livelli). Il salto e' un affinamento interno al parser del nav, senza drift narrativo. Al prossimo cambiamento di codice o configurazione, rilanciare `sync-context` e bumpare. Popolare `current-work.md` all'apertura della prossima feature; le candidate sono in `roadmap.md`. File untracked in root: `.graphifyignore` — decidere se committarlo o aggiungerlo a `.gitignore`.
+Schede bumpate a `233c39c` (checkpoint dopo commit di `.graphifyignore` + regola di allineamento con `.gitignore`). Edit chirurgico su `design-and-security.md` (sezione "Separazione dei piani dati") per menzionare il confine graphify; `.graphifyignore` aggiunto ai `covers-paths` della stessa scheda cosi' il prossimo drift viene intercettato direttamente. Modalita' corrente: manutenzione. Al prossimo cambiamento di codice o configurazione, rilanciare `sync-context` e bumpare. Popolare `current-work.md` all'apertura della prossima feature; le candidate sono in `roadmap.md`.
