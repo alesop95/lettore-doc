@@ -1,6 +1,6 @@
 # Snapshot
 
-Branch: `main`. Commit di riferimento: `bbf19bb`.
+Branch: `main`. Commit di riferimento: `904f831`.
 
 ## Stato delle schede
 
@@ -15,4 +15,4 @@ Branch: `main`. Commit di riferimento: `bbf19bb`.
 
 ## Prossima azione concreta
 
-Schede ri-ancorate a `bbf19bb` dopo il salto "anonimizzazione robusta + gate residue" e chiusura ciclo `ARCHITETTURA SERVER-CLOUD-LINEE` (skills-repo `bbd361e`). Al prossimo cambiamento di codice o configurazione, rilanciare `sync-context` e bumpare. Popolare `current-work.md` all'apertura della prossima feature; le candidate sono in `roadmap.md`.
+Schede bumpate a `904f831` (checkpoint dopo `generate_taxonomy_index`: supporto nav MkDocs a 3 livelli). Il salto e' un affinamento interno al parser del nav, senza drift narrativo. Al prossimo cambiamento di codice o configurazione, rilanciare `sync-context` e bumpare. Popolare `current-work.md` all'apertura della prossima feature; le candidate sono in `roadmap.md`. File untracked in root: `.graphifyignore` — decidere se committarlo o aggiungerlo a `.gitignore`.
