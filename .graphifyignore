@@ -1,0 +1,53 @@
+# .graphifyignore - regole di esclusione per graphify
+#
+# Copia di .gitignore SENZA la riga _intermediate/, perche' quella cartella
+# e' esclusa da git per privacy ma contiene i sorgenti che graphify deve
+# indicizzare (vedi CLAUDE.md: la pipeline gira su cartelle in _intermediate/).
+
+# -- Ambiente Python virtuale --
+.venv/
+
+# -- Vault Obsidian generato (rigenerabile) --
+vault-output/
+
+# -- Variabili di ambiente locali --
+.env
+.env.local
+
+# -- Cartelle graphify-out --
+graphify-out/
+**/graphify-out/
+
+# -- Cartelle di test locali --
+*-copy-prova/
+*-test/
+_tmp_*/
+
+# -- Obsidian --
+.obsidian/
+
+# -- Cache Python --
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+
+# -- IDE --
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# -- Sistema operativo --
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# -- File temporanei Word --
+~$*.docx
+~$*.doc
+
+# -- Note locali --
+_notes/
