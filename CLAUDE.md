@@ -338,3 +338,8 @@ idempotenza.
   presuppone esattamente questa struttura.
 - Mai modificare a mano il diario `.md`: rigenerare sempre tramite
   `sync_diary_md.py` come descritto nella sezione dedicata sopra.
+- Mantenere allineate le due liste `.gitignore` e `.graphifyignore`: quando si
+  aggiunge o rimuove un pattern in una delle due, replicarlo nell'altra. L'unica
+  differenza intenzionale e' `_intermediate/`, presente solo in `.gitignore`
+  (esclusione per privacy) e volutamente assente in `.graphifyignore` (graphify
+  deve indicizzare i sorgenti sanitizzati in `_intermediate/src/`).

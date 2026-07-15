@@ -2,6 +2,10 @@
 
 > Append-only, ordine cronologico inverso.
 
+## 2026-07-15 — Aggiunto `.graphifyignore` e regola di allineamento
+
+Committato `.graphifyignore` finora untracked in root: copia intenzionale di `.gitignore` senza `_intermediate/`, perche' graphify deve indicizzare i sorgenti sanitizzati in `_intermediate/src/<subfolder>/` che invece git esclude per privacy. Aggiunta in `CLAUDE.md` sezione "Regole operative" una nuova voce che vincola l'allineamento manuale delle due liste, dichiarando `_intermediate/` come unica differenza intenzionale. Il file era gia' operativo da tempo (usato nelle sessioni graphify) ma non versionato: il commit rende visibile il drift nel `git diff` quando una delle due liste viene toccata senza l'altra.
+
 ## 2026-07-15 — Bump schede a `904f831`
 
 Sync-context da `bbf19bb` a `904f831`. Unico commit intermedio: `904f831` che estende `parse_nav()` in `scripts/generate_taxonomy_index.py` per supportare un nav MkDocs a tre livelli (Domain > SubArea > Capability) oltre al caso piatto a due livelli gia' supportato. Introduce due helper interni (`_collect_leaves` per la ricorsione sulle foglie, `_build_domain` per la costruzione del domain dict) e calcola `domain_dir` in stile POSIX per coerenza cross-OS. Il contratto verso il resto della pipeline non cambia: `taxonomy_index.json` mantiene la stessa struttura `domains[*].capabilities[*]`. Nessuna scheda cita esplicitamente la topologia a due livelli del nav come vincolo, quindi il salto e' un affinamento interno senza drift narrativo. Bump di checkpoint su tutte e sei le schede (STACK, design-and-security, deployment, dev-testing, current-work, roadmap) senza edit di contenuto. File untracked in root: `.graphifyignore` (fuori scope di questa sync).
