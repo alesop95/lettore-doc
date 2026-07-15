@@ -125,50 +125,97 @@ def extract_capability_keywords(md_path: Path) -> tuple[list[str], str]:
     return keywords[:60], overview_excerpt
 
 
+def _collect_leaves(children: list) -> list[tuple[str, str]]:
+    """Ricorsivamente estrae tutte le foglie (cap_name, cap_file) sotto un nodo nav."""
+    leaves: list[tuple[str, str]] = []
+    for entry in children:
+        if not isinstance(entry, dict):
+            continue
+        for name, value in entry.items():
+            if isinstance(value, str):
+                leaves.append((name, value))
+            elif isinstance(value, list):
+                leaves.extend(_collect_leaves(value))
+    return leaves
+
+
+def _build_domain(domain_name: str, leaves: list[tuple[str, str]], docs_dir: Path) -> dict:
+    capabilities = []
+    for cap_name, cap_file in leaves:
+        slug = Path(cap_file).stem
+        md_path = docs_dir / cap_file
+        keywords, overview_excerpt = extract_capability_keywords(md_path)
+        capabilities.append({
+            "name":             cap_name,
+            "slug":             slug,
+            "file":             cap_file,
+            "keywords":         keywords,
+            "overview_excerpt": overview_excerpt,
+        })
+    # dir = cartella parent della prima capability, in stile POSIX per coerenza cross-OS
+    domain_dir = ""
+    if capabilities:
+        parent = Path(capabilities[0]["file"]).parent
+        parent_str = parent.as_posix()
+        domain_dir = "" if parent_str == "." else parent_str
+    return {
+        "name":            domain_name,
+        "dir":             domain_dir,
+        "domain_keywords": DOMAIN_BASE_KEYWORDS.get(domain_name, []),
+        "capabilities":    capabilities,
+    }
+
+
 def parse_nav(nav: list, docs_dir: Path) -> list[dict]:
     """
-    Parsa il nav di mkdocs e restituisce lista di domain dict.
-    Ignora la Home entry.
+    Parsa il nav di mkdocs e restituisce lista di domain dict. Ignora la Home entry.
+
+    Struttura nav supportata:
+    - Top-level piatto (foglie dirette):
+        - Soft Skills:
+            - Overview: soft/index.md
+      Il top-level diventa il domain.
+    - Top-level con sotto-sezioni (Domain > SubArea > Capability):
+        - Technical:
+            - Infrastructure:
+                - "Infrastructure & Virtualization": technical/infrastructure/xxx.md
+                - ...
+            - Security:
+                - ...
+      Ogni sotto-sezione (Infrastructure, Security, ...) diventa un domain.
+      Le chiavi in DOMAIN_BASE_KEYWORDS sono allineate alle sotto-sezioni.
+    - Caso misto (foglie dirette + sotto-sezioni sotto lo stesso top-level):
+      il top-level diventa domain per le foglie dirette e ogni sotto-sezione
+      diventa un domain separato.
     """
     domains = []
 
     for entry in nav:
         if not isinstance(entry, dict):
             continue
-        for domain_name, children in entry.items():
-            if domain_name == "Home":
+        for top_name, children in entry.items():
+            if top_name == "Home":
                 continue
             if not isinstance(children, list):
                 continue
 
-            capabilities = []
+            direct_leaves: list[tuple[str, str]] = []
+            subsections: list[tuple[str, list]] = []
             for child in children:
                 if not isinstance(child, dict):
                     continue
-                for cap_name, cap_file in child.items():
-                    if not isinstance(cap_file, str):
-                        continue
-                    # slug dal nome del file senza estensione e cartella
-                    slug = Path(cap_file).stem
-                    md_path = docs_dir / cap_file
+                for name, value in child.items():
+                    if isinstance(value, str):
+                        direct_leaves.append((name, value))
+                    elif isinstance(value, list):
+                        subsections.append((name, value))
 
-                    keywords, overview_excerpt = extract_capability_keywords(md_path)
-
-                    capabilities.append({
-                        "name":             cap_name,
-                        "slug":             slug,
-                        "file":             cap_file,
-                        "keywords":         keywords,
-                        "overview_excerpt": overview_excerpt,
-                    })
-
-            domain_dir = capabilities[0]["file"].split("/")[0] if capabilities else ""
-            domains.append({
-                "name":            domain_name,
-                "dir":             domain_dir,
-                "domain_keywords": DOMAIN_BASE_KEYWORDS.get(domain_name, []),
-                "capabilities":    capabilities,
-            })
+            if direct_leaves:
+                domains.append(_build_domain(top_name, direct_leaves, docs_dir))
+            for sub_name, sub_children in subsections:
+                leaves = _collect_leaves(sub_children)
+                if leaves:
+                    domains.append(_build_domain(sub_name, leaves, docs_dir))
 
     return domains
 
