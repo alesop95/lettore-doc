@@ -1,4 +1,4 @@
-"""
+r"""
 sync_diary_md.py - Rigenera il diario .md a partire dal .docx aggiornato.
 
 Mantiene il file Markdown sincronizzato con il documento Word, permettendo
