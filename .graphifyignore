@@ -57,3 +57,6 @@ _notes/
 # non sono materiale sanitizzato per la tassonomia pubblica: graphify
 # non deve mai scansionarli.
 _intermediate/src/Cybersec-governance-baseline/
+
+# Backup automatici del diario
+*.bak.docx

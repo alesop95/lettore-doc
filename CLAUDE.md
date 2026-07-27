@@ -95,9 +95,40 @@ L'agente ricorda **proattivamente** all'utente di aggiornare il diario nei segue
 - All'apertura di ogni sessione, se `git log -- "*.docx"` mostra che il diario ha piu' di sette giorni di ritardo rispetto ai commit sostanziali di codice (esclusi i commit di solo `sync-context`, `memory:`, o `Diario:`), avvisa dell'esistenza di un possibile debito e chiede se recuperarlo.
 - Al termine di un refactor architetturale (modifica di uno script pipeline con impatto oltre la singola funzione, aggiunta di uno script nuovo, introduzione di una nuova dipendenza), propone di annotare la scoperta nel diario prima di chiudere la sessione.
 
-L'aggiornamento del diario resta **manuale dell'utente** perche' il `.docx` ha formattazione tipografica ricca (blocchi codice, tabelle, note a pie' di pagina, immagini) che gli strumenti di editing programmatico degradano; il ruolo dell'agente e' produrre draft testuali densi in scratchpad e ricordare l'apertura del ciclo, non toccare il `.docx`.
+L'aggiunta di nuove sezioni in coda **e' automatizzata** da
+`scripts/append_diary_section.py`, che inserisce i paragrafi del draft prima
+dell'ancora `Lezioni apprese` usando gli stili gia' presenti nel documento e
+convertendo le note del draft in note a pie' di pagina vere. Non riscrive nulla
+di esistente, crea sempre un `.bak` prima di toccare il file, e la review resta
+il diff del `.md` prodotto da `finalize_diary.ps1`: se quel diff mostra
+cancellazioni invece di sole aggiunte, qualcosa e' andato storto e si ripristina
+dal backup. L'editing **manuale in Word resta necessario** per tutto cio' che lo
+script non modella, cioe' tabelle, immagini, blocchi di codice formattati, e
+qualsiasi modifica a contenuto gia' esistente: in quei casi si segue la
+procedura manuale descritta piu' sotto.
 
-### Procedura di aggiornamento (passi obbligatori in ordine)
+### Procedura automatica (caso normale: nuove sezioni C.N in coda)
+
+L'agente scrive il draft in `_notes/` (cartella gitignored) nel formato che lo
+script sa leggere: `## C.N Titolo` diventa Heading 2, `### x` diventa Heading 3,
+`*termine*` diventa corsivo, `` `keyword` `` diventa monospazio, `[^n]` piu' la
+definizione `[^n]: testo` diventano una nota a pie' di pagina. Poi:
+
+```
+.\.venv\Scripts\python.exe scripts\append_diary_section.py --draft "_notes\<draft>.md"
+.\.venv\Scripts\python.exe scripts\append_diary_section.py --draft "_notes\<draft>.md" --apply
+.\scripts\finalize_diary.ps1
+```
+
+Il primo comando e' di sola verifica e riporta quante sezioni, paragrafi e note
+verrebbero inserite, segnalando rimandi senza definizione e definizioni mai
+citate. Il secondo scrive. Il terzo rigenera il `.md`, mostra il diff e stampa i
+comandi git. Vale sempre la regola di stile in
+`.claude/rules/interaction-style.md`: prosa discorsiva, niente elenchi puntati
+nella narrazione, termini densi in corsivo, keyword di codice in monospazio,
+acronimi in note a pie' di pagina, nessun trattino lungo.
+
+### Procedura manuale (tabelle, immagini, modifiche al contenuto esistente)
 
 Il file `.docx` da modificare vive in root del progetto, path assoluto:
 
@@ -118,12 +149,8 @@ E:\lettore-doc\diario-tecnico-progetto (lettore-doc + skills-repo).docx
 
 2. **Editare in Word e salvare.** Le nuove sezioni di ciclo vanno in coda al
    capitolo *Appendice C - Manutenzione, tuning, migrazione*, come C.N
-   crescente. Le regole di stile sono in `.claude/rules/interaction-style.md`
-   e valgono anche per il diario: prosa discorsiva, niente elenchi puntati
-   nella narrazione, termini densi in corsivo, keyword di codice in
-   monospazio, acronimi in note a pie' di pagina. Le note storiche vecchie
-   non si riscrivono per stile: si conservano com'erano, si aggiornano solo
-   se contengono errori di fatto.
+   crescente. Le note storiche vecchie non si riscrivono per stile: si
+   conservano com'erano, si aggiornano solo se contengono errori di fatto.
 
 3. **Rigenerare il `.md` + review + comandi git.** Comando helper unico:
 

@@ -45,6 +45,35 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host ""
+
+# Se ne' il .docx ne' il .md risultano modificati, il diario non e' stato
+# toccato: tipicamente si e' lanciato finalize senza aver prima salvato
+# l'edit in Word. Stampare comunque i comandi git in quel caso invita a un
+# commit vuoto, quindi qui ci si ferma con un messaggio esplicito.
+Push-Location $root
+try {
+    $changed = git status --porcelain -- `
+        "diario-tecnico-progetto (lettore-doc + skills-repo).docx" `
+        "diario-tecnico-progetto (lettore-doc + skills-repo).md" `
+        "diario-assets/"
+} finally {
+    Pop-Location
+}
+
+if (-not $changed) {
+    Write-Host "[2/3] Nessuna modifica: il .md rigenerato coincide con quello " -NoNewline -ForegroundColor Yellow
+    Write-Host "gia' versionato."
+    Write-Host ""
+    Write-Host "Il .docx non risulta modificato rispetto all'ultimo commit." -ForegroundColor DarkGray
+    Write-Host "Se l'intenzione era aggiornare il diario, l'edit in Word non e'" -ForegroundColor DarkGray
+    Write-Host "stato salvato: riaprire con .\scripts\open_diary.ps1, incollare il" -ForegroundColor DarkGray
+    Write-Host "draft, salvare, e rilanciare questo script." -ForegroundColor DarkGray
+    Write-Host ""
+    Write-Host "Nessun comando git stampato: non c'e' nulla da committare." -ForegroundColor DarkGray
+    Write-Host ""
+    exit 0
+}
+
 if (-not $NoDiff) {
     Write-Host "[2/3] Git diff sul .md (review):" -ForegroundColor Yellow
     Push-Location $root

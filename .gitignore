@@ -56,3 +56,6 @@ _notes/
 # via _intermediate/ a monte: qui la regola e' esplicita per simmetria con
 # .graphifyignore e come documentazione della decisione.
 _intermediate/src/Cybersec-governance-baseline/
+
+# Backup automatici del diario prodotti da append_diary_section.py
+*.bak.docx
