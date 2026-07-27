@@ -8,7 +8,7 @@ covers-paths:
   - run_pipeline.sh
   - sources.yml
   - requirements.txt
-last-verified-commit: 233c39c
+last-verified-commit: 397c0a8
 source-doc: GUIDA-TECNICA.md
 ---
 
@@ -27,6 +27,10 @@ I documenti non si leggono mai interi: `parse_docx.py` espone Livello 1 (schelet
 ## Componenti
 
 Gli script in `scripts/` coprono parsing token-efficient, estrazione entita, grafo pesato, generazione del vault e la pipeline di estrazione skill (`enrich_graph`, `generate_taxonomy_index`, `map_to_taxonomy`, `sanitize_taxonomy_diff`, `export_to_taxonomy`). Ambiente Python isolato in `.venv/`; gli orchestratori `run_pipeline.ps1/.sh` invocano il Python del venv per path completo. Il launcher `scripts/start_graphify.ps1` apre una sessione Claude Code dentro una subfolder sorgente, con parametro `-Account` per selezionare l'account Claude su macchine multi-account. Skill di progetto `grafo-conoscenza` e `parsing-docx`, agent `lettore-documentazione`, e `graphify` (esterno) per il grafo semantico.
+
+A monte di graphify c'e' un passo di preparazione, `scripts/prepare_graphify_source.py`. graphify scarta i file il cui nome contiene `password`, `credential`, `secret`, `token` o `private_key`, guardando solo il nome e mai il contenuto. In teoria lo scarto e' osservabile, perche' `detect` restituisce un campo `skipped_sensitive`; nel caso reale del ciclo Cybersec non lo era, perche' quella lista si popola in un loop a valle del pre-detect e il pre-detect aveva gia' abortito con `total_files: 0`, facendo concludere alla sessione `needs_graph: false` senza eseguire nulla. Una policy IT aziendale intitolata "Configurazione-password-Windows.docx" sparisce quindi dal corpus senza alcun segnale. Lo script replica quel filtro (`_SENSITIVE_DIRS` e `_SENSITIVE_PATTERNS` di graphify 0.8.14, duplicati e non importati perche' graphify vive in un virtualenv pipx separato), in sola verifica elenca cosa verrebbe scartato, e con `--apply` genera una cartella `<nome>-sanitized/` con i documenti convertiti in Markdown e i soli nomi neutralizzati secondo una mappa esplicita in italiano. Il corpo non viene toccato: l'anonimizzazione dei dati resta compito di `enrich_graph.py` e `sanitize_taxonomy_diff.py` a valle. I file di vero materiale crittografico, riconosciuti per estensione, non si rinominano e restano esclusi.
+
+Accanto alla pipeline vive una triade di tooling per il diario tecnico, che non elabora documenti sorgente ma tiene allineata la coppia `.docx` piu `.md` versionata in root. `sync_diary_md.py` e' il convertitore deterministico che rigenera il `.md` dal `.docx` estraendo paragrafi, blocchi codice, tabelle, note a pie' di pagina e immagini in `diario-assets/`. `scripts/open_diary.ps1` apre il `.docx` in Word e stampa i cinque draft `*diario*.md` piu' recenti trovati sotto lo scratchpad di sessione, cosi' che chi edita sappia cosa incollare. `scripts/finalize_diary.ps1` chiude il ciclo: invoca il convertitore, mostra `git diff --stat` e le prime duecento righe del diff del `.md` come review testuale che il binario da solo non consente, e stampa i comandi git nel doppio blocco PowerShell piu' bash imposto dalla regola `git-commands-format.md`. Nessuno dei due helper esegue git: commit e push restano manuali per policy.
 
 ## Anonimizzazione multi-strato
 
