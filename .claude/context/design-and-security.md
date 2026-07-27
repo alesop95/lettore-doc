@@ -7,7 +7,7 @@ covers-paths:
   - scripts/export_to_taxonomy.py
   - .gitignore
   - .graphifyignore
-last-verified-commit: 397c0a8
+last-verified-commit: 6f3c2b8
 source-doc: GUIDA-TECNICA.md
 ---
 
@@ -35,6 +35,6 @@ L'indicizzabilita' di `_intermediate/src/` non e' pero' incondizionata: vale per
 
 ## Segreti
 
-`.env` e `.env.local` gitignored, mai committati (verificato sulla storia). Le path sensibili si risolvono via variabili d'ambiente, mai hardcoded negli script.
+`.env` e `.env.local` gitignored, mai committati (verificato sulla storia). Le path sensibili si risolvono via variabili d'ambiente, mai hardcoded negli script. Nelle due liste c'e' anche `*.bak.docx`, che esclude i backup automatici del diario prodotti da `append_diary_section.py`: non e' una questione di riservatezza, perche' il diario e' versionato, ma di non impilare in root copie binarie quasi identiche a ogni inserimento.
 
 Dettaglio in `GUIDA-TECNICA.md` sezioni 1.1-1.3.

@@ -2,6 +2,18 @@
 
 > Append-only, ordine cronologico inverso.
 
+## 2026-07-27 — Automazione dell'inserimento nel diario e chiusura del debito (`6f3c2b8`)
+
+Il diario aveva due mesi di ritardo e il motivo era il costo del passo manuale: aprire Word, incollare, riformattare. La regola in `CLAUDE.md` dichiarava il `.docx` intoccabile a programma per via della formattazione ricca. Verificato invece di assumere: il documento usa solo `Normal` e `Heading 1-4`, e le ventuno note a pie' di pagina hanno tutte lo stesso pattern XML. Test di round-trip su copia: python-docx salva senza perdere le trentaquattro tabelle, e la parte `word/footnotes.xml`, che tratta come blob opaco, si puo' riscrivere via `_blob` e persiste al salvataggio.
+
+Nuovo `scripts/append_diary_section.py`: legge un draft Markdown nel formato che l'agente gia' produce e inserisce le sezioni prima di un paragrafo di ancoraggio (default `Lezioni apprese`), con `## C.N` -> Heading 2, `### x` -> Heading 3, `*x*`/`**x**`/`` `x` `` -> run corsivo/grassetto/monospazio, e `[^n]` piu' `[^n]: testo` -> note a pie' di pagina vere, con id allocati in continuita' sulle esistenti. Default in sola diagnosi, `--apply` scrive creando prima un `.bak` timestampato e rilegge il file confrontando il conteggio tabelle. La review vera resta il diff del `.md`: un inserimento sano produce solo aggiunte.
+
+Primo uso reale: sezioni C.9-C.12 (anonimizzazione robusta e ciclo ARCHITETTURA, nav MkDocs a tre livelli e confine graphify, ciclo Cybersec, chiusura del debito con le due correzioni di oggi), diff del `.md` `+72 / -0`. Debito documentale dal 2026-05-28 chiuso.
+
+Due difetti trovati dal test su copia e corretti prima di toccare il file vero: le note conservavano gli asterischi Markdown letterali (ora sono run formattati, acronimo in corsivo), e il draft conteneva quattro trattini lunghi vietati dalla regola tipografica. Un terzo sospetto, rimando a nota apparentemente spostato a fine paragrafo, era un errore di verifica: `p.text` non include i rimandi, e controllato sulla sequenza dei run il rimando risulta correttamente inline.
+
+Corretti nello stesso giro due difetti del tooling esistente, entrambi emersi da una esecuzione reale. `finalize_diary.ps1` stampava i comandi git anche quando la rigenerazione non produceva modifiche, invitando a un commit vuoto con messaggio `Diario:`: ora controlla `git status --porcelain` e si ferma dicendo che il `.docx` non risulta modificato. `sync_diary_md.py` emetteva un `SyntaxWarning` perche' la docstring conteneva `.\.venv\Scripts\...` in stringa non raw. Aggiunto `*.bak.docx` a `.gitignore` e `.graphifyignore`. `CLAUDE.md` riscritto distinguendo la procedura automatica (nuove sezioni in coda) da quella manuale, che resta necessaria per tabelle, immagini, blocchi di codice formattati e modifiche a contenuto esistente.
+
 ## 2026-07-27 — Chiuse le due scoperte del ciclo Cybersec (`397c0a8` + skills-repo `88f4b8f`)
 
 Sessione di manutenzione senza ingest. Tre blocchi di lavoro.
