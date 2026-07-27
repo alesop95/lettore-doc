@@ -85,42 +85,73 @@ Ogni volta che si verifica un cambiamento significativo del sistema:
 - Nuovo caso operativo emerso nell'uso quotidiano
 - Bug rilevante identificato e risolto
 - Nuova dipendenza esterna integrata (es. nuovo server MCP)
+- **Fine di ogni ciclo di ingest end-to-end** (dopo push skills-repo + `ingest_state track`): la sezione va scritta come nuovo blocco C.N in Appendice C, con esito, scoperte, numeri del ciclo.
+
+### Trigger di autopromemoria dell'agente
+
+L'agente ricorda **proattivamente** all'utente di aggiornare il diario nei seguenti momenti, senza aspettare richiesta esplicita:
+
+- A conclusione di ogni ciclo di ingest, subito dopo il track e il riepilogo finale, propone di scrivere un draft in scratchpad per la nuova sezione C.N e ricorda i tre passi manuali (Word, `finalize_diary.ps1`, git manuale).
+- All'apertura di ogni sessione, se `git log -- "*.docx"` mostra che il diario ha piu' di sette giorni di ritardo rispetto ai commit sostanziali di codice (esclusi i commit di solo `sync-context`, `memory:`, o `Diario:`), avvisa dell'esistenza di un possibile debito e chiede se recuperarlo.
+- Al termine di un refactor architetturale (modifica di uno script pipeline con impatto oltre la singola funzione, aggiunta di uno script nuovo, introduzione di una nuova dipendenza), propone di annotare la scoperta nel diario prima di chiudere la sessione.
+
+L'aggiornamento del diario resta **manuale dell'utente** perche' il `.docx` ha formattazione tipografica ricca (blocchi codice, tabelle, note a pie' di pagina, immagini) che gli strumenti di editing programmatico degradano; il ruolo dell'agente e' produrre draft testuali densi in scratchpad e ricordare l'apertura del ciclo, non toccare il `.docx`.
 
 ### Procedura di aggiornamento (passi obbligatori in ordine)
 
-1. **Modificare il `.docx`** in Microsoft Word, salvare con lo stesso nome.
+Il file `.docx` da modificare vive in root del progetto, path assoluto:
 
-2. **Rigenerare il `.md`** dalla root del repository:
+```
+E:\lettore-doc\diario-tecnico-progetto (lettore-doc + skills-repo).docx
+```
 
-   ```
-   .\.venv\Scripts\python.exe scripts\sync_diary_md.py
-   ```
-
-   Lo script legge il `.docx` aggiornato, estrae paragrafi, blocchi di
-   codice, tabelle e note a pie' di pagina, e sovrascrive il `.md` con
-   il contenuto convertito. Estrae anche le immagini in `diario-assets/`.
-
-3. **Verificare il diff testuale** prima di committare:
+1. **Aprire il `.docx` in Microsoft Word.** Comando helper:
 
    ```
-   git diff "diario-tecnico-progetto (lettore-doc + skills-repo).md"
+   .\scripts\open_diary.ps1
    ```
 
-   Questo mostra esattamente cosa e' cambiato nel diario in formato leggibile,
-   cosa che il `.docx` da solo (essendo binario) non permette di vedere.
+   Lo script apre Word sul file corretto e stampa i draft `*diario*.md` piu'
+   recenti presenti nello scratchpad di sessione (tipicamente sotto
+   `%LOCALAPPDATA%\Temp\claude\E--lettore-doc\<session>\scratchpad\`), da
+   cui copiare-incollare il contenuto proposto dall'agente.
 
-4. **Committare entrambi i file insieme** nello stesso commit:
+2. **Editare in Word e salvare.** Le nuove sezioni di ciclo vanno in coda al
+   capitolo *Appendice C - Manutenzione, tuning, migrazione*, come C.N
+   crescente. Le regole di stile sono in `.claude/rules/interaction-style.md`
+   e valgono anche per il diario: prosa discorsiva, niente elenchi puntati
+   nella narrazione, termini densi in corsivo, keyword di codice in
+   monospazio, acronimi in note a pie' di pagina. Le note storiche vecchie
+   non si riscrivono per stile: si conservano com'erano, si aggiornano solo
+   se contengono errori di fatto.
+
+3. **Rigenerare il `.md` + review + comandi git.** Comando helper unico:
 
    ```
-   git add "diario-tecnico-progetto (lettore-doc + skills-repo).docx"
-   git add "diario-tecnico-progetto (lettore-doc + skills-repo).md"
-   git add diario-assets/
+   .\scripts\finalize_diary.ps1
+   ```
+
+   Lo script (a) chiama `sync_diary_md.py` per riscrivere il `.md` dal `.docx`
+   estraendo paragrafi, blocchi codice, tabelle, note a pie' di pagina e
+   immagini in `diario-assets/`; (b) mostra `git diff --stat` e le prime
+   duecento righe del diff completo del `.md`, come review testuale che il
+   `.docx` da solo non consente; (c) stampa i comandi git per commit+push
+   in doppia versione PowerShell+bash come da regola
+   `git-commands-format.md`. Se non si vuole vedere il diff (per esempio
+   perche' si e' gia' letto il draft in scratchpad), usare
+   `.\scripts\finalize_diary.ps1 -NoDiff`.
+
+4. **Committare entrambi i file insieme** con prefisso `Diario:`:
+
+   ```
+   git add "diario-tecnico-progetto (lettore-doc + skills-repo).docx" "diario-tecnico-progetto (lettore-doc + skills-repo).md" "diario-assets/"
    git commit -m "Diario: <descrizione modifica>"
    git push
    ```
 
-   Il prefisso `Diario:` nel commit message rende immediatamente identificabili
-   nello storico le modifiche al diario.
+   Il prefisso `Diario:` rende immediatamente identificabili nello storico
+   le modifiche al diario, distinguendole dai `sync-context:` e dai
+   `memory:`.
 
 ### Cosa NON fare mai
 
@@ -259,6 +290,16 @@ esplicitamente `.venv\Scripts\python.exe`.
 ### Pipeline estrazione skill verso il repo pubblico
 
 ```
+# 0. Pre-flight: cosa scarterebbe graphify per il nome dei file
+#    (sola verifica, non scrive nulla)
+.\.venv\Scripts\python.exe scripts\prepare_graphify_source.py `
+    --folder "_intermediate\src\<subfolder>"
+
+#    Se segnala file scartati, generare la cartella parallela e lanciare
+#    /graphify su quella invece che sull'originale:
+.\.venv\Scripts\python.exe scripts\prepare_graphify_source.py `
+    --folder "_intermediate\src\<subfolder>" --apply
+
 # 1. Indicizza la tassonomia attuale del repo pubblico
 .\.venv\Scripts\python.exe scripts\generate_taxonomy_index.py `
     --output _intermediate\taxonomy_index.json

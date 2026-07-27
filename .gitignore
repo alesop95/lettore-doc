@@ -49,3 +49,10 @@ desktop.ini
 
 # Altri file e cartelle da ignorare
 _notes/
+
+# ── Cartelle non sanitizzate escluse anche dalla scansione graphify ───
+# Documenti aziendali reali (policy IT), presenti in _intermediate/src/ ma
+# non ancora sanitizzati per la tassonomia pubblica. Gia' esclusi da git
+# via _intermediate/ a monte: qui la regola e' esplicita per simmetria con
+# .graphifyignore e come documentazione della decisione.
+_intermediate/src/Cybersec-governance-baseline/

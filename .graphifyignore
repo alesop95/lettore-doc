@@ -51,3 +51,9 @@ desktop.ini
 
 # -- Note locali --
 _notes/
+
+# -- Cartelle non sanitizzate: non indicizzare --
+# Documenti aziendali reali (policy IT). Vivono in _intermediate/src/ ma
+# non sono materiale sanitizzato per la tassonomia pubblica: graphify
+# non deve mai scansionarli.
+_intermediate/src/Cybersec-governance-baseline/
