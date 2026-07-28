@@ -60,3 +60,4 @@ _intermediate/src/Cybersec-governance-baseline/
 
 # Backup automatici del diario
 *.bak.docx
+_intermediate/src/Cybersec-endpoint-governance/

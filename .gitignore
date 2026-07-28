@@ -59,3 +59,4 @@ _intermediate/src/Cybersec-governance-baseline/
 
 # Backup automatici del diario prodotti da append_diary_section.py
 *.bak.docx
+_intermediate/src/Cybersec-endpoint-governance/
