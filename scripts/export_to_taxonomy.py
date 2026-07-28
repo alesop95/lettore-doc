@@ -103,7 +103,11 @@ def build_evidence_block(
     src_file = node.get("source_file", "")
     preview  = apply_anon(node.get("text_preview", "").strip(), anon_map)
 
-    src_basename = Path(src_file).name if src_file else "-"
+    # Anche il nome del file va anonimizzato: e' testo che finisce nel repo
+    # pubblico esattamente come il label e il preview, e i nomi dei documenti
+    # aziendali contengono regolarmente ragione sociale ("Protezione avanzata
+    # (LAN) Intrawelt.docx") o hostname ("... eccezione su PC-ALESSIO.docx").
+    src_basename = apply_anon(Path(src_file).name, anon_map) if src_file else "-"
     community_line = (
         f"- **Graph community**: {apply_anon(community_label, anon_map)}\n"
         if community_label

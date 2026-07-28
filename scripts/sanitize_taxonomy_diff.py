@@ -104,6 +104,26 @@ def has_residue(text: str) -> str | None:
     return None
 
 
+def scrub_residues(text: str) -> tuple[str, list[str]]:
+    """
+    Sostituisce i residui trovati con un marcatore neutro, invece di scartare.
+
+    Serve per i campi che accompagnano l'evidenza senza esserne il contenuto
+    semantico: il nome del file sorgente e il preview del corpo. Su quelli lo
+    scarto sarebbe sproporzionato, perche' una ragione sociale nel nome di un
+    documento non rende l'evidenza inutilizzabile, la rende solo non
+    pubblicabile cosi' com'e'. Sul label invece resta lo scarto, perche' un
+    label scrubato rischia di non voler dire piu' niente.
+    """
+    found: list[str] = []
+    out = text
+    for name, rx in LEAK_PATTERNS.items():
+        if rx.search(out):
+            found.append(name)
+            out = rx.sub("[RIMOSSO]", out)
+    return out, found
+
+
 def evaluate_label(label: str, anon_map: dict, min_chars: int):
     """Ritorna (keep: bool, anon_label: str, reason: str)."""
     anon_label = apply_anon(label, anon_map)
@@ -162,6 +182,8 @@ def main() -> None:
         "new_domain":     {"kept": 0, "dropped": {}, "examples_dropped": []},
     }
 
+    scrub_counts: dict[str, int] = {}
+
     def filter_bucket(items, kind):
         kept = []
         for item in items:
@@ -176,6 +198,24 @@ def main() -> None:
                 label = ""
 
             keep, anon_label, reason = evaluate_label(label, anon_map, args.min_chars)
+
+            # Il label non e' l'unico testo che finisce nella pagina pubblica:
+            # ci finiscono anche il nome del file sorgente e il preview del
+            # corpo. Entrambi passavano il gate senza controllo, ed e' da li'
+            # che nel ciclo Cybersec endpoint sono uscite ragione sociale e
+            # hostname nonostante la mappa di anonimizzazione. Qui si scrubano
+            # invece di scartare, e si tiene il conto per il report.
+            if keep and kind == "fit":
+                node = item.get("node", {})
+                for field in ("source_file", "text_preview"):
+                    raw = node.get(field) or ""
+                    if not raw:
+                        continue
+                    cleaned, found = scrub_residues(apply_anon(raw, anon_map))
+                    if found:
+                        node[field] = cleaned
+                        for f in found:
+                            scrub_counts[f] = scrub_counts.get(f, 0) + 1
 
             # Per new_capability: anche se il suggested_name e' pulito, i node
             # labels interni finiscono nel file (Responsibilities). Filtra i
@@ -216,6 +256,15 @@ def main() -> None:
     # -----------------------------------------------------------------------
     # Riepilogo
     # -----------------------------------------------------------------------
+    if scrub_counts:
+        total = sum(scrub_counts.values())
+        print(f"\nscrub su source_file/text_preview: {total} sostituzioni",
+              file=sys.stderr)
+        for name, count in sorted(scrub_counts.items(), key=lambda kv: -kv[1]):
+            print(f"   {count:4d}  {name}", file=sys.stderr)
+        print("   (residui sostituiti con [RIMOSSO], entries conservate)\n",
+              file=sys.stderr)
+
     for kind in ("fit", "new_capability", "new_domain"):
         s = stats[kind]
         dropped_total = sum(s["dropped"].values())

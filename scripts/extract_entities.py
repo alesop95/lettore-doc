@@ -233,7 +233,21 @@ TECH_BRAND_STOPWORDS = {
     "Tcp", "Udp", "Http", "Https", "Ftp", "Sftp", "Ssh", "Telnet",
     "Json", "Xml", "Yaml", "Csv", "Sql",
     "Photo", "Screenshot", "Image",
+    # Vendor e prodotti di sicurezza. Aggiunti dal ciclo Cybersec endpoint:
+    # senza di questi il NER classificava "Bitdefender Gravityzone" come nome
+    # di persona, cioe' mascherava con [PERSONA_N] il prodotto centrale del
+    # corpus. Sono esattamente i termini che devono restare visibili
+    # nell'evidenza pubblica, perche' sono la competenza dichiarata.
+    "Bitdefender", "GravityZone", "Gravityzone", "ESET", "Eset",
+    "Kaspersky", "Avast", "AVG", "Malwarebytes", "Norton",
+    "CrowdStrike", "SentinelOne", "Defender", "Trellix", "Cylance",
+    "Nessus", "OpenVAS", "Qualys", "Tenable", "Metasploit", "Wireshark",
+    "Veeam", "Proxmox", "Zyxel", "Fortigate", "pfSense", "OPNsense",
 }
+
+# Versione minuscola per i confronti sui percorsi che producono token gia'
+# normalizzati in maiuscolo (hostname). Si costruisce una volta sola.
+_TECH_BRAND_LOWER = {w.lower() for w in TECH_BRAND_STOPWORDS}
 
 ITALIAN_STOPWORDS = {
     "Il", "Lo", "La", "I", "Gli", "Le", "Un", "Uno", "Una", "Del", "Dello",
@@ -312,12 +326,18 @@ def extract_from_text(text: str) -> dict[str, list[str]]:
             continue
         results["IP_ADDR"].append(candidate)
 
+    # Il confronto con TECH_BRAND_STOPWORDS va fatto case-insensitive: le due
+    # regex hostname matchano solo maiuscolo per costruzione, mentre la stoplist
+    # e' scritta in forma capitalizzata. Confrontandole cosi' com'erano, il
+    # filtro non scattava mai su questo percorso: "WINDOWS" passava come
+    # hostname pur essendo gia' presente come "Windows" fra i brand, e in un
+    # corpus di endpoint security finiva mascherato come [HOSTNAME_N] ovunque.
     hostname_seen: set[str] = set()
     for m in HOSTNAME_PREFIX_RE.finditer(text):
         h = m.group(1)
         if h in hostname_seen or h in HOSTNAME_STOPLIST:
             continue
-        if h in TECH_BRAND_STOPWORDS:
+        if h.lower() in _TECH_BRAND_LOWER:
             continue
         hostname_seen.add(h)
         results["HOSTNAME"].append(h)
@@ -325,7 +345,7 @@ def extract_from_text(text: str) -> dict[str, list[str]]:
         h = m.group(1)
         if h in hostname_seen or h in HOSTNAME_STOPLIST:
             continue
-        if h in TECH_BRAND_STOPWORDS:
+        if h.lower() in _TECH_BRAND_LOWER:
             continue
         # Salta acronimi puri gia' scartati come ACRONYM: se non ha ne' digit
         # ne' >=3 dash-parts, non e' un hostname credibile.
@@ -348,6 +368,14 @@ def extract_from_text(text: str) -> dict[str, list[str]]:
             if ent.label_ != "PER":
                 continue
             candidate = ent.text.strip()
+            # Un nome di persona non attraversa un'interruzione di riga. Senza
+            # questo vincolo lo span del NER inglobava il testo successivo, e
+            # nel ciclo Cybersec endpoint produsse una voce di mappa che
+            # partiva da "Bitdefender Gravityzone" e proseguiva su tre righe di
+            # residui del template: una sostituzione cosi' e' insieme inutile e
+            # dannosa, perche' aggancia testo che non e' un nome.
+            if "\n" in candidate or "\r" in candidate:
+                continue
             tokens = candidate.split()
             if len(tokens) < 2:
                 continue  # nomi singoli ambigui (PER + iniziale isolata, troppo rischioso)
@@ -355,7 +383,7 @@ def extract_from_text(text: str) -> dict[str, list[str]]:
                 continue
             if any(w in company_substrings for w in tokens):
                 continue
-            if any(t in TECH_BRAND_STOPWORDS for t in tokens):
+            if any(t.lower() in _TECH_BRAND_LOWER for t in tokens):
                 continue
             results["PROPER_NOUN"].append(candidate)
     else:

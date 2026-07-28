@@ -59,6 +59,22 @@ except ImportError as e:
 # Lettura testo dai file sorgente
 # ---------------------------------------------------------------------------
 
+FRONTMATTER_RE = re.compile(r"\A\s*---\s*\n.*?\n---\s*\n", re.DOTALL)
+
+
+def strip_frontmatter(text: str) -> str:
+    """
+    Toglie il blocco frontmatter YAML iniziale, se presente.
+
+    I file prodotti da `prepare_graphify_source.py` aprono con un frontmatter
+    di tracciabilita' (`source_file`, `sanitized_from`, `sanitized_at`,
+    `profile`). Serve a noi per risalire all'originale, ma non deve entrare nel
+    testo che finisce nel repo pubblico: e' metadato, e `source_file` contiene
+    il nome del file di partenza.
+    """
+    return FRONTMATTER_RE.sub("", text, count=1)
+
+
 def read_source_text(source_file: str, workdir: Path) -> str | None:
     """
     Risolve il source_file relativo rispetto a workdir e legge il testo.
@@ -214,7 +230,13 @@ def main() -> None:
             raw = extract_from_text(text)
             normalized = normalize_and_dedupe(raw)
             n["italian_entities"] = normalized
-            n["text_preview"] = text[:200].strip()
+            # Il preview salta il frontmatter YAML dei file prodotti da
+            # prepare_graphify_source.py. Senza questo taglio i primi duecento
+            # caratteri di ogni evidenza sono metadati invece che contenuto, e
+            # soprattutto `source_file:` ripete il nome del .docx originale,
+            # che puo' contenere ragione sociale o hostname: e' una fuga che
+            # aggira la mappa di anonimizzazione perche' finisce nel corpo.
+            n["text_preview"] = strip_frontmatter(text)[:200].strip()
             if normalized:
                 all_node_entities.append(normalized)
         else:
