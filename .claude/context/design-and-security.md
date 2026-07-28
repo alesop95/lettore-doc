@@ -7,7 +7,7 @@ covers-paths:
   - scripts/export_to_taxonomy.py
   - .gitignore
   - .graphifyignore
-last-verified-commit: 6f3c2b8
+last-verified-commit: 21e11b3
 source-doc: GUIDA-TECNICA.md
 ---
 
@@ -20,6 +20,14 @@ Due repository con scopi opposti: `lettore-doc` (privato, locale, mai online: co
 ## Gate finale con residue-pattern
 
 Fra `map_to_taxonomy.py` e `export_to_taxonomy.py --apply` c'e' un passaggio obbligatorio in `sanitize_taxonomy_diff.py` che scarta le entries insufficienti o rischiose dopo anonimizzazione: entries con troppo pochi caratteri alfanumerici significativi (soglia default 10, escludendo i placeholder), entries in cui pattern IP/EMAIL/hostname sopravvivono alla mappa per case-mismatch, entries con residui specifici del contesto del progetto (dominio aziendale nudo, nome azienda senza suffix ragione sociale, nome fornitore ricorrente, sede fisica). Per le new-capability filtra anche i nodi interni con residue e droppa l'intera capability se non ne rimane nessuno. E' difesa in profondita: la mappa e' first-line, il gate e' second-line.
+
+## I nomi dei file come vettore di fuga
+
+La catena di anonimizzazione era stata costruita pensando al testo: label, name, community label, preview. I nomi dei file no, e nel ciclo Cybersec endpoint del 2026-07-28 sono stati la falla. Un documento aziendale si chiama regolarmente "Protezione avanzata (LAN) Intrawelt.docx" oppure "advancedIPscanner eccezione su PC-ALESSIO.docx", cioe' porta nel nome ragione sociale o hostname. Due percorsi lo portavano nel repo pubblico. Il primo e' la riga `- **Source**:` di ogni evidenza, che `export_to_taxonomy.py` scriveva verbatim senza passare per `apply_anon`. Il secondo e' piu' sottile: il preview del corpo erano i primi duecento caratteri del file sanitizzato, che apre col frontmatter di tracciabilita', e quel frontmatter contiene `source_file:` con il nome del `.docx` di partenza. La fuga arrivava quindi anche nel corpo, aggirando la mappa.
+
+La correzione e' su tre livelli, coerente con la difesa in profondita' del resto della catena. `enrich_graph.py` salta il frontmatter prima di costruire il preview, il che come effetto secondario migliora ogni evidenza futura, perche' i duecento caratteri sono ora contenuto e non metadato. `export_to_taxonomy.py` fa passare il nome del file per `apply_anon` come qualsiasi altro testo. E `sanitize_taxonomy_diff.py`, che ispezionava solo il label, ispeziona anche `source_file` e `text_preview`: su questi due campi pero' *scruba* invece di scartare, sostituendo il residuo con `[RIMOSSO]` e tenendone il conto nel report. La distinzione e' voluta: un label con un residuo dentro, scrubato, rischia di non voler dire piu' niente e tanto vale scartare l'evidenza; una ragione sociale nel nome del documento non rende l'evidenza inutile, la rende solo non pubblicabile cosi' com'e'.
+
+La lezione di metodo conta piu' della patch. La falla e' stata vista solo ispezionando il `git diff` del repo pubblico prima del commit: il riepilogo dell'export diceva ventotto iniezioni e zero anomalie, e il dry-run non stampa i corpi. Il controllo che ha funzionato e' stato cercare le stringhe sensibili nel diff, con l'apply gia' eseguito ma nulla committato, quindi annullabile con un `git checkout`.
 
 ## Preservazione del line-ending
 

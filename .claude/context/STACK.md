@@ -8,7 +8,7 @@ covers-paths:
   - run_pipeline.sh
   - sources.yml
   - requirements.txt
-last-verified-commit: 6f3c2b8
+last-verified-commit: 21e11b3
 source-doc: GUIDA-TECNICA.md
 ---
 
@@ -34,6 +34,8 @@ Accanto alla pipeline vive un gruppo di tooling per il diario tecnico, che non e
 
 ## Anonimizzazione multi-strato
 
-`extract_entities.py` estrae dieci categorie (ACRONYM, COMPANY, PROPER_NOUN, PROJECT_CODE, LAW_REF, DATE, AMOUNT, EMAIL, URL, DOC_REF) piu due dedicate all'infrastruttura (IP_ADDR dotted-quad con CIDR opzionale, HOSTNAME con prefissi WIN/SRV/PC-/NAS/USG/VM e forma dashed uppercase). `enrich_graph.py` costruisce una `anonymization_map` con placeholder `[AZIENDA_N]`, `[PERSONA_N]`, `[EMAIL_N]`, `[IP_N]`, `[HOSTNAME_N]`; `map_to_taxonomy.py` la propaga nel `taxonomy_diff.json`, `sanitize_taxonomy_diff.py` la applica e scarta entries con residui non catturati dalla mappa (dominio aziendale nudo, nomi fornitori, sede fisica, IP abbreviato tra parentesi, hostname con spazi), `export_to_taxonomy.py` la applica ai label H3, ai name H1 delle new-capability, al community label e al preview del body, oltre a rigenerare lo slug/file path dal name anonimizzato per non esporre IP/hostname nel nome del file pubblicato.
+`extract_entities.py` estrae dieci categorie (ACRONYM, COMPANY, PROPER_NOUN, PROJECT_CODE, LAW_REF, DATE, AMOUNT, EMAIL, URL, DOC_REF) piu due dedicate all'infrastruttura (IP_ADDR dotted-quad con CIDR opzionale, HOSTNAME con prefissi WIN/SRV/PC-/NAS/USG/VM e forma dashed uppercase). `enrich_graph.py` costruisce una `anonymization_map` con placeholder `[AZIENDA_N]`, `[PERSONA_N]`, `[EMAIL_N]`, `[IP_N]`, `[HOSTNAME_N]`; `map_to_taxonomy.py` la propaga nel `taxonomy_diff.json`, `sanitize_taxonomy_diff.py` la applica e scarta entries con residui non catturati dalla mappa (dominio aziendale nudo, nomi fornitori, sede fisica, IP abbreviato tra parentesi, hostname con spazi), `export_to_taxonomy.py` la applica ai label H3, ai name H1 delle new-capability, al community label, al preview del body e al nome del file sorgente citato nella riga `**Source**:`, oltre a rigenerare lo slug/file path dal name anonimizzato per non esporre IP/hostname nel nome del file pubblicato.
+
+Due difetti dell'estrazione sono stati corretti nel ciclo Cybersec endpoint, entrambi per falsi positivi che danneggiavano l'evidenza invece di proteggerla. Il confronto fra token hostname e `TECH_BRAND_STOPWORDS` era case-sensitive mentre le due regex hostname matchano solo maiuscolo: il filtro non scattava mai su quel percorso, e `WINDOWS` passava come hostname pur essendo gia' presente come `Windows` fra i brand, finendo mascherato come `[HOSTNAME_N]` in un corpus di endpoint security dove quella parola e' ubiqua. Il confronto e' ora su una versione minuscola precalcolata della stoplist. Il NER inoltre produceva span che attraversavano le interruzioni di riga, e cosi' `Bitdefender Gravityzone` piu' tre righe di residui di template diventava una voce `[PERSONA_N]`: un nome di persona non attraversa un'interruzione di paragrafo, e i candidati che contengono newline vengono scartati. Alla stoplist sono stati aggiunti i vendor di sicurezza, che sono esattamente i termini da preservare perche' costituiscono la competenza dichiarata.
 
 Il dettaglio (formule, pesi, categorie, comandi) e in `GUIDA-TECNICA.md`.

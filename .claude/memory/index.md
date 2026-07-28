@@ -1,6 +1,6 @@
 # Snapshot
 
-Branch: `main`. Commit di riferimento: `6f3c2b8`.
+Branch: `main`. Commit di riferimento: `21e11b3`.
 
 ## Stato delle schede
 
@@ -19,6 +19,10 @@ Chiuse il 2026-07-27 entrambe le scoperte lasciate aperte dal ciclo Cybersec gov
 
 Chiuso anche il debito del diario, che aveva due mesi di ritardo: le sezioni C.9-C.12 sono dentro, inserite da `append_diary_section.py`, che automatizza il caso normale (nuove sezioni in coda) e riduce l'intervento manuale in Word a tabelle, immagini e modifiche a contenuto esistente.
 
-Prossima azione: **nessun debito aperto, si puo' aprire un nuovo ciclo di ingest**. Partire da `.\scripts\session_resume.ps1` per il digest delle subfolder con delta o mai ingerite, e ricordare che la sequenza ora comincia dal passo 0 di pre-flight (`prepare_graphify_source.py`) prima di lanciare graphify. Il prossimo ciclo e' anche la prima verifica sul campo delle correzioni di oggi: se il routing regge senza correzioni manuali del `taxonomy_diff`, il fix e' confermato.
+Chiuso il 2026-07-28 il ciclo Cybersec endpoint governance (skills-repo `5ca2dd6`, 28 evidenze su 2 Capability). Il fix del routing e' confermato sul campo: zero evidenze a `Quality Certification`, 5 correzioni manuali su 28 contro 18 su 34 del ciclo precedente. Il ciclo ha pero' scoperto e chiuso una fuga reale di ragione sociale e hostname attraverso i nomi dei file, dettagli nel work-log.
+
+Prossima azione: **nessun debito aperto**. Per un nuovo ciclo partire da `.\scripts\session_resume.ps1`; la sequenza comincia dal passo 0 di pre-flight (`prepare_graphify_source.py`). Candidate mai ingerite, per dimensione: `Helpdesk_T-Rex` (41 doc), `_DA SISTEMARE (Alessio)` (44), `Helpdesk_RWS-Groupshare-Studio` (17, gia' proposta in C.8), un blocco coeso dei piccoli `Helpdesk_*` (NinjaOne, Microsoft 365, Onboarding, Amministrazione, INFOCERT, ABBYY, Timbracartellini, circa 35 in totale), `TOOL AI coding assistance` (9). Le grandi (`ENIVIPA` 2500, `SCENIA` 918, `OpenAI` 267) restano da affrontare con una segmentazione per coesione semantica, non in blocco.
+
+Due note operative. Nel segmento `Cybersec & IT Governance` restano non lavorate le subfolder `Privacy (GDPR e Contratti)` (33), `_VA e Pentest assessment` (12, con report di rischio da escludere), `_QUESTIONARI FORNITORI` (126, dati di terzi, da escludere), e i dieci documenti non processati di `_ GDPR E ISO27001`. Il digest continuera' inoltre a segnalare 996 file nuovi su `Miscellaneous procedure e utilities`, tutti scraping di brochure di fondi di terzi sotto `Web scraping - Downloaded Web sites`: non e' materiale da ingerire, e la cartella andrebbe aggiunta a `EXCLUDE_DIR_NAMES` in `ingest_state.py`, dove stanno gia' `_archive` e `templates`.
 
 Modalita' corrente: manutenzione. Residui aperti non urgenti in `roadmap.md`: ereditarieta' dei token di community in `classify_nodes`, e `Soft Skills` a zero keyword. Popolare `current-work.md` se si apre una nuova feature.
