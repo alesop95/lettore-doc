@@ -7,7 +7,7 @@ covers-paths:
   - scripts/export_to_taxonomy.py
   - .gitignore
   - .graphifyignore
-last-verified-commit: 21e11b3
+last-verified-commit: 9594d44
 source-doc: GUIDA-TECNICA.md
 ---
 
@@ -26,6 +26,10 @@ Fra `map_to_taxonomy.py` e `export_to_taxonomy.py --apply` c'e' un passaggio obb
 La catena di anonimizzazione era stata costruita pensando al testo: label, name, community label, preview. I nomi dei file no, e nel ciclo Cybersec endpoint del 2026-07-28 sono stati la falla. Un documento aziendale si chiama regolarmente "Protezione avanzata (LAN) Intrawelt.docx" oppure "advancedIPscanner eccezione su PC-ALESSIO.docx", cioe' porta nel nome ragione sociale o hostname. Due percorsi lo portavano nel repo pubblico. Il primo e' la riga `- **Source**:` di ogni evidenza, che `export_to_taxonomy.py` scriveva verbatim senza passare per `apply_anon`. Il secondo e' piu' sottile: il preview del corpo erano i primi duecento caratteri del file sanitizzato, che apre col frontmatter di tracciabilita', e quel frontmatter contiene `source_file:` con il nome del `.docx` di partenza. La fuga arrivava quindi anche nel corpo, aggirando la mappa.
 
 La correzione e' su tre livelli, coerente con la difesa in profondita' del resto della catena. `enrich_graph.py` salta il frontmatter prima di costruire il preview, il che come effetto secondario migliora ogni evidenza futura, perche' i duecento caratteri sono ora contenuto e non metadato. `export_to_taxonomy.py` fa passare il nome del file per `apply_anon` come qualsiasi altro testo. E `sanitize_taxonomy_diff.py`, che ispezionava solo il label, ispeziona anche `source_file` e `text_preview`: su questi due campi pero' *scruba* invece di scartare, sostituendo il residuo con `[RIMOSSO]` e tenendone il conto nel report. La distinzione e' voluta: un label con un residuo dentro, scrubato, rischia di non voler dire piu' niente e tanto vale scartare l'evidenza; una ragione sociale nel nome del documento non rende l'evidenza inutile, la rende solo non pubblicabile cosi' com'e'.
+
+Il preview ancorato al nodo, introdotto per riparare le evidenze del ciclo ARCHITETTURA, ha spostato in su il profilo di rischio e va tenuto presente. Finche' il preview erano i primi duecento caratteri del file, cioe' metadati e titoli, il gate lavorava quasi a vuoto; ora che il preview e' il paragrafo pertinente al nodo, il testo pubblicato e' contenuto reale preso dal centro dei documenti, e i residui arrivano davvero. Sul solo ciclo ARCHITETTURA il gate ne ha scrubati sei, e ha reso necessario allargare il pattern del fornitore, che cercava `Punto\s+Informatica` e mancava le forme reali `Intrawelt-punto-info` e `punto_informatica`. La regola generale che ne discende: ogni miglioramento della qualita' del preview e' anche un ampliamento della superficie da sanitizzare, e va accompagnato da una rilettura dei pattern residue invece che dato per gratuito.
+
+Un residuo accettato consapevolmente: nel testo pubblicato sopravvivono frammenti di indirizzo a tre ottetti, come "connesso alla 0.7.1". Non e' stata aggiunta una regola perche' un pattern su tre ottetti cattura i numeri di versione (`graphify 0.8.14`, `Proxmox 8.3.4`) e renderebbe il gate inutilizzabile per falsi positivi, mentre un ottetto parziale senza contesto di rete non identifica un host. E' una scelta, non una dimenticanza.
 
 La lezione di metodo conta piu' della patch. La falla e' stata vista solo ispezionando il `git diff` del repo pubblico prima del commit: il riepilogo dell'export diceva ventotto iniezioni e zero anomalie, e il dry-run non stampa i corpi. Il controllo che ha funzionato e' stato cercare le stringhe sensibili nel diff, con l'apply gia' eseguito ma nulla committato, quindi annullabile con un `git checkout`.
 

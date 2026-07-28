@@ -1192,6 +1192,56 @@ Un nodo del grafo è rimasto non classificato con punteggio esattamente zero: la
 
 Ventotto evidenze iniettate su due pagine Capability, ventisette sulla sicurezza e una sulla rete, solo aggiunte, build del sito verde. Lo stato di ingest è stato aggiornato sulla sola sottocartella Bitdefender, non su quella di governance: di quest'ultima sono stati lavorati tre documenti su tredici, e registrarla per intero l'avrebbe fatta sparire dai riepiloghi futuri con delta zero, nascondendo i dieci non lavorati. Lo stato serve a sapere cosa resta da fare, e va tenuto onesto anche quando questo significa vedere una sottocartella ricomparire a ogni apertura di sessione.
 
+## C.14 Riparare evidenze già pubblicate: audit, refresh e preview ancorato (2026-07-28)
+
+Questa sezione nasce da una domanda apparentemente semplice, se si potesse anonimizzare a posteriori la fuga scoperta nel ciclo precedente. La risposta è che non ce n'era bisogno, ma verificarlo ha aperto un capitolo che il sistema non sapeva ancora affrontare: come si corregge un'evidenza già pubblicata.
+
+### L'audit, e perché va fatto anche sulla storia
+
+La fuga del ciclo Cybersec endpoint era stata annullata con un ripristino prima di qualunque commit, quindi non aveva mai raggiunto il repository remoto. Fidarsi di questo ricordo però non basta, per due motivi. Il difetto che l'aveva causata era preesistente, quindi andava controllato tutto il pubblicato e non soltanto l'ultimo ciclo. E soprattutto la storia di un repository pubblico è pubblica quanto i suoi file: se una fuga fosse stata committata e poi corretta in un commit successivo, resterebbe perfettamente leggibile nei commit precedenti, e un ripristino del file corrente non la toglierebbe.
+
+L'audit è stato quindi doppio, sull'albero di lavoro e su tutti i venti commit della storia, cercando cognomi, indirizzi di posta, indirizzi interni, hostname del parco macchine, domini aziendali, nomi di fornitori e indirizzi di sede. Il risultato è che nessuna di quelle categorie compare mai, in nessun commit. La catena di anonimizzazione e il gate residue avevano fatto il loro lavoro, e l'unico buco, quello dei nomi dei file, era stato intercettato prima di committare.
+
+### Un'incoerenza di policy scambiata per una fuga
+
+L'unica stringa presente era la ragione sociale nuda, e l'analisi del contesto ha mostrato che non era una perdita ma un'incoerenza. La pagina di presentazione del sito dichiara volutamente, in testo scritto a mano, il ruolo di IT Manager presso l'azienda, con proprietà del budget e della roadmap; la sezione delle tecnologie di una pagina Capability elenca i provider di hosting per nome. Sono il curriculum, non una divulgazione involontaria. Nello stesso repository però il gate residue trattava quel nome come materiale da scartare, e nel ciclo precedente ne aveva scrubato quattordici occorrenze e scartato due evidenze intere.
+
+Mascherare un nome in un punto mentre la pagina di presentazione lo dichiara non protegge nulla e costa evidenze buone. La regola è stata rimossa, tenendo invece tutto ciò che descrive l'infrastruttura o identifica una persona: il dominio, gli indirizzi di posta, gli indirizzi interni, gli hostname, i fornitori e le sedi fisiche. La distinzione utile non è fra pubblico e privato in astratto, ma fra ciò che il proprietario del profilo ha scelto di dichiarare e ciò che descrive un sistema di terzi.
+
+### Il difetto vero: quarantaquattro evidenze identiche
+
+L'audit ha però trovato un problema che nessun controllo di riservatezza avrebbe segnalato, perché non è una fuga. Quarantaquattro blocchi di evidenza distribuiti su nove pagine, iniettati dal ciclo infrastrutturale di luglio, avevano tutti il medesimo testo: gli stessi duecento caratteri, cioè il commento di conversione più il titolo del documento più il primo sottotitolo, senza mai arrivare al contenuto. Quarantaquattro voci che dicono la stessa cosa e non informano su nulla, visibili pubblicamente.
+
+La riparazione ha richiesto tre interventi, e il primo tentativo è stato insufficiente. La correzione fatta il giorno prima toglieva il frontmatter delle note di tracciabilità, ma quei file provengono dal convertitore di graphify e aprono con un commento in stile HTML, quindi il taglio non li toccava affatto: la funzione riconosce ora entrambi i formati, perché esistono due convertitori, e scarta anche le intestazioni iniziali.
+
+Il punto sostanziale era però un altro, e sarebbe rimasto anche togliendo correttamente l'intestazione. Il testo di anteprima veniva costruito sul file e non sul nodo, quindi tutte le evidenze estratte dallo stesso documento erano identiche per costruzione. I nodi prodotti da graphify non portano un riferimento di posizione, il campo apposito è vuoto, quindi l'ancoraggio va ricostruito: il documento viene spezzato in paragrafi e si sceglie quello che contiene più termini distintivi dell'etichetta del nodo, ripiegando sull'inizio del documento quando nessun paragrafo aggancia. La misura sul corpus dice che l'aggancio sull'etichetta intera riesce nell'undici per cento dei casi e quello sui singoli termini nell'ottantasette, e il risultato sono ottantasette anteprime distinte su centoventiquattro nodi, contro una sola per documento.
+
+### La modalità che mancava
+
+Restava un ostacolo strutturale. L'iniezione delle evidenze è idempotente per identificatore stabile, cioè uno hash del nodo e della Capability scritto in un commento invisibile, e questo garantisce che rilanciare l'export non duplichi nulla. Lo stesso meccanismo però rendeva impossibile correggere un'evidenza già pubblicata: l'export la riconosceva come presente e la saltava, e l'unica via sarebbe stata riscrivere a mano le sezioni delle evidenze, cosa che le regole operative del progetto vietano esplicitamente perché quelle sezioni sono di competenza esclusiva dello script.
+
+È stata quindi aggiunta una modalità di riscrittura, che sostituisce in blocco l'evidenza identificata, delimitandola risalendo dall'ancora invisibile all'intestazione di terzo livello che la precede e scendendo fino all'intestazione successiva. Sul primo uso reale ha riscritto cinquantasei evidenze e ne ha aggiunte due, senza lasciare blocchi orfani, perché la sovrapposizione fra gli identificatori del nuovo passaggio e quelli già pubblicati era di cinquantasei su cinquantotto.
+
+### Il prezzo di un'anteprima migliore
+
+C'è una conseguenza di questo miglioramento che vale enunciare come principio, perché non era ovvia prima di vederla. Finché l'anteprima erano i primi caratteri del file, cioè metadati e titoli, il gate di sanitizzazione lavorava quasi a vuoto: non c'era quasi nulla di sensibile da intercettare. Nel momento in cui l'anteprima diventa il paragrafo pertinente, il testo pubblicato è contenuto reale preso dal centro dei documenti, e i residui arrivano davvero. Sul solo ciclo infrastrutturale il gate ne ha rimossi sei, e ha reso necessario allargare il riconoscimento di un fornitore, che cercava le due parole separate da uno spazio e mancava le forme reali con trattino e con underscore, emerse solo ora.
+
+Ogni miglioramento della qualità dell'anteprima è quindi anche un ampliamento della superficie da sanitizzare, e va accompagnato da una rilettura dei pattern residui invece che dato per gratuito. Una scelta esplicita in questa direzione: nel testo pubblicato sopravvivono frammenti di indirizzo a tre ottetti, e non è stata aggiunta una regola perché un pattern così cattura i numeri di versione, che in un corpus tecnico sono ovunque, e renderebbe il gate inutilizzabile per falsi positivi; un ottetto parziale senza contesto di rete non identifica un host.
+
+### Controlli che cambiano forma
+
+La riscrittura ha reso obsoleto un controllo che era considerato affidabile. Il conteggio delle righe modificate doveva mostrare solo aggiunte, e una cancellazione era un segnale di allarme; in modalità di riscrittura le cancellazioni sono invece legittime e attese, perché il vecchio blocco viene sostituito. Al suo posto valgono due verifiche diverse. Il conteggio degli identificatori di evidenza prima e dopo, che deve restare costante a meno delle aggiunte volute, perché un calo significa che la delimitazione del blocco ha divorato quello adiacente. E la presenza delle quattro intestazioni di contratto in ogni pagina toccata, perché sono il presupposto su cui l'export si appoggia e una riscrittura che ne mangia una romperebbe silenziosamente tutte le iniezioni future. Sul primo uso reale gli identificatori sono passati da duecentotrentacinque a duecentotrentanove, con quattro aggiunte attese e nessuna perdita, e tutte e undici le pagine hanno conservato la struttura.
+
+### Un'inefficienza corretta di passaggio
+
+L'attesa dell'estrazione ha reso visibile un difetto di costo. L'arricchimento del grafo eseguiva l'estrazione delle entità, che gira su tutto il testo di un documento, una volta per ogni nodo invece di una volta per file: un documento citato da cinquanta nodi veniva riletto e rianalizzato dal modello statistico cinquanta volte. Sul ciclo infrastrutturale, duecentotré nodi su una ventina di documenti, questo significava minuti di attesa dove ne bastavano secondi. Una cache per file, corretta perché il risultato dipende dal documento e non dal nodo, ha riportato la riesecuzione sul ciclo di endpoint da minuti a tre secondi. L'aggregazione a valle non cambia, perché ogni nodo continua a contribuire una volta al conteggio delle entità.
+
+### Chiusura
+
+Undici pagine aggiornate, ottantaquattro evidenze fra riscritte e aggiunte, duecentotrentanove identificatori totali, costruzione del sito verde, e le tre verifiche di riservatezza pulite: sul diff sanitizzato, sul diff reale del repository pubblico prima del commit, e sulla struttura. Commit del repository pubblico 502efe5.
+
+La lezione che questa sessione aggiunge alle precedenti è che un sistema che pubblica ha bisogno non solo di controlli in avanti, ma anche di una via per tornare indietro su ciò che ha già pubblicato. L'idempotenza protegge dai duplicati e insieme immobilizza gli errori: senza una modalità di riscrittura, ogni difetto della pipeline diventava permanente nel prodotto pubblico, con la sola alternativa di un intervento manuale che le regole vietano per ragioni giuste. La capacità di correggere retroattivamente non è un accessorio, è parte del contratto di affidabilità di una pipeline che scrive verso l'esterno.
+
 # Lezioni apprese
 
 Prima di costruire qualcosa di nuovo, vale sempre la pena verificare se la funzionalita' necessaria esiste gia' nel codice esistente. Il piano a quattro script sarebbe risultato in meno di duecento righe di codice che replicavano una versione notevolmente piu' povera di cio' che parse_docx.py e extract_entities.py gia' facevano. Il tempo investito nell'analisi del sistema esistente prima di progettare il nuovo ha eliminato mesi di lavoro ridondante.

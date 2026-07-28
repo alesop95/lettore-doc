@@ -1,6 +1,6 @@
 # Snapshot
 
-Branch: `main`. Commit di riferimento: `21e11b3`.
+Branch: `main`. Commit di riferimento: `9594d44`.
 
 ## Stato delle schede
 
