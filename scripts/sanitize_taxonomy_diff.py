@@ -61,9 +61,21 @@ LEAK_PATTERNS = {
         r")\b"
     ),
     "residue-domain-intrawelt":  re.compile(r"\bintrawelt\.(?:com|it|de)\b", re.IGNORECASE),
-    "residue-company-intrawelt": re.compile(r"\bIntrawelt\b"),
+    # La ragione sociale nuda NON e' un residuo. Il datore di lavoro e'
+    # dichiarato apertamente nella tassonomia pubblica ("IT team at Intrawelt
+    # as IT Manager" in soft/index.md): trattarlo come segreto nelle evidenze
+    # mentre la pagina di presentazione lo nomina non proteggeva nulla, e
+    # costava evidenze buone scartate o scrubate. Resta invece residuo tutto
+    # cio' che descrive l'infrastruttura o identifica persone: il dominio, le
+    # email, gli IP, gli hostname, i fornitori e le sedi fisiche.
     "residue-company-fastnet":   re.compile(r"\bFastnet\b", re.IGNORECASE),
-    "residue-vendor-punto-inf":  re.compile(r"\bPunto\s+Informatica\b", re.IGNORECASE),
+    # Il separatore fra le due parole non e' sempre uno spazio: nei documenti
+    # reali il fornitore compare anche come "Intrawelt-punto-info" e
+    # "punto_informatica". Il pattern originale cercava `Punto\s+Informatica` e
+    # mancava tutte le forme con trattino, underscore o troncate, che sono
+    # emerse quando i preview hanno cominciato a pescare testo dal centro dei
+    # documenti invece che dall'intestazione.
+    "residue-vendor-punto-inf":  re.compile(r"\bpunto[\s\-_]*info", re.IGNORECASE),
     "residue-vendor-vianova":    re.compile(r"\bVianova\b", re.IGNORECASE),
     "residue-site-via-pescolla": re.compile(r"\bVia\s+Pescolla\b", re.IGNORECASE),
     "residue-site-elpidio":      re.compile(r"\bPorto\s+Sant['\s]?Elpidio\b", re.IGNORECASE),

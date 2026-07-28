@@ -145,6 +145,38 @@ def already_injected(md_text: str, sid: str) -> bool:
     return sid in md_text
 
 
+def replace_block(md_text: str, sid: str, new_block: str) -> str | None:
+    """
+    Sostituisce in blocco l'evidenza identificata da `sid`, restituendo None se
+    non la trova.
+
+    Serve alla modalita' `--refresh`. L'idempotenza per ID protegge dai
+    duplicati ma rende anche impossibile correggere un'evidenza gia' pubblicata:
+    quando un difetto della pipeline ha prodotto blocchi sbagliati, come i
+    quarantaquattro preview identici del ciclo ARCHITETTURA, l'unico modo di
+    ripararli era riscrivere a mano il repo pubblico, che le regole del progetto
+    vietano. Qui il blocco viene delimitato risalendo dall'ancora all'`###` che
+    la precede e scendendo fino alla prossima intestazione.
+    """
+    anchor = EVIDENCE_ANCHOR.format(stable_id=sid)
+    pos = md_text.find(anchor)
+    if pos == -1:
+        return None
+
+    start = md_text.rfind("\n### ", 0, pos)
+    if start == -1:
+        return None
+    start += 1  # si tiene il newline precedente come separatore
+
+    after = pos + len(anchor)
+    next_h3 = md_text.find("\n### ", after)
+    next_h2 = md_text.find("\n## ", after)
+    candidates = [p for p in (next_h3, next_h2) if p != -1]
+    end = min(candidates) + 1 if candidates else len(md_text)
+
+    return md_text[:start] + new_block.rstrip() + "\n\n" + md_text[end:]
+
+
 def inject_into_section(md_text: str, block: str) -> str:
     """
     Inserisce 'block' prima della fine della sezione ## Projects & evidence.
@@ -256,11 +288,17 @@ def main() -> None:
     mode_group = parser.add_mutually_exclusive_group()
     mode_group.add_argument("--dry-run", action="store_true", default=True,
                              help="Mostra cosa verrebbe fatto (default)")
+    parser.add_argument("--refresh", action="store_true",
+                        help="Riscrive i blocchi di evidenza gia' presenti invece di "
+                             "saltarli. Serve a correggere evidenze pubblicate con un "
+                             "difetto della pipeline; senza questo flag l'idempotenza "
+                             "per ID le protegge e non c'e' modo di aggiornarle.")
     mode_group.add_argument("--apply",   action="store_true",
                              help="Applica effettivamente le modifiche")
     args = parser.parse_args()
 
     apply_mode   = args.apply
+    refresh_mode = args.refresh
     diff_path    = Path(args.diff_json).resolve()
     skills_repo  = Path(args.skills_repo).resolve()
 
@@ -326,6 +364,7 @@ def main() -> None:
             by_cap_file[cap_file].append(item)
 
     injected_count  = 0
+    refreshed_count = 0
     skipped_dup     = 0
     missing_files   = 0
 
@@ -348,6 +387,7 @@ def main() -> None:
         cap_slug = Path(cap_file).stem
 
         newly_injected = []
+        refreshed      = []
         for item in items:
             node           = item.get("node", {})
             community_id   = item.get("community_id")
@@ -358,23 +398,35 @@ def main() -> None:
                 cap_slug_item,
             )
 
-            if already_injected(md_text, sid):
-                skipped_dup += 1
-                continue
-
             # Community label: il diff non la porta direttamente per i fit,
             # usiamo il community_id come stringa se non disponibile
             community_label = str(community_id) if community_id is not None else None
-
             block = build_evidence_block(node, cap_slug_item, community_label, anon_map)
+
+            if already_injected(md_text, sid):
+                if not refresh_mode:
+                    skipped_dup += 1
+                    continue
+                replaced = replace_block(md_text, sid, block)
+                if replaced is None:
+                    skipped_dup += 1
+                    continue
+                md_text = replaced
+                refreshed.append(apply_anon(node.get("label", "?"), anon_map))
+                refreshed_count += 1
+                continue
+
             md_text = inject_into_section(md_text, block)
             newly_injected.append(apply_anon(node.get("label", "?"), anon_map))
             injected_count += 1
 
-        if newly_injected:
-            print(f"  {cap_file}: +{len(newly_injected)} nodi", file=sys.stderr)
-            for lbl in newly_injected:
-                print(f"    + {lbl}", file=sys.stderr)
+        if newly_injected or refreshed:
+            if newly_injected:
+                print(f"  {cap_file}: +{len(newly_injected)} nodi", file=sys.stderr)
+                for lbl in newly_injected:
+                    print(f"    + {lbl}", file=sys.stderr)
+            if refreshed:
+                print(f"  {cap_file}: ~{len(refreshed)} nodi riscritti", file=sys.stderr)
 
             if apply_mode and md_text != original_text:
                 md_path.write_text(md_text, encoding="utf-8", newline=original_newline)
@@ -437,6 +489,8 @@ def main() -> None:
     print(f"\n=== Riepilogo ===", file=sys.stderr)
     print(f"  Iniezioni {'eseguite' if apply_mode else 'pianificate'}: {injected_count}",
           file=sys.stderr)
+    if refresh_mode:
+        print(f"  Riscritte (refresh):   {refreshed_count}", file=sys.stderr)
     print(f"  Già presenti (skip):   {skipped_dup}", file=sys.stderr)
     print(f"  File mancanti:         {missing_files}", file=sys.stderr)
     if new_caps:
