@@ -56,7 +56,8 @@ _notes/
 # via _intermediate/ a monte: qui la regola e' esplicita per simmetria con
 # .graphifyignore e come documentazione della decisione.
 _intermediate/src/Cybersec-governance-baseline/
+_intermediate/src/Cybersec-endpoint-governance/
+_intermediate/src/Helpdesk-RWS-Groupshare-Studio/
 
 # Backup automatici del diario prodotti da append_diary_section.py
 *.bak.docx
-_intermediate/src/Cybersec-endpoint-governance/
