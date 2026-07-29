@@ -9,6 +9,14 @@
 > di una transizione specifica: se lo si legge molto dopo il 2026-07-29, quei due
 > hanno la precedenza.
 
+> Aggiornamento del 2026-07-29, a valle della sessione che ha letto questo file:
+> l'azione pendente e' stata eseguita (`1033bc1`) e i punti 1-4 della coda di
+> lavoro qui sotto sono chiusi in `382f99e` piu' skills-repo `cfeada5`. Resta
+> aperto il solo punto 5, il prossimo ciclo di ingest. Quello che di questo
+> documento conserva valore e' la sezione su cosa e' stato provato e scartato e
+> quella sulle trappole verificate su questa macchina; per lo stato vale
+> `.claude/memory/index.md` e per il dettaglio `.claude/memory/progress.md`.
+
 ---
 
 ## Come ripartire

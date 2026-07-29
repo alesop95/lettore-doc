@@ -5,9 +5,10 @@ generated-date: 2026-06-17
 covers-paths:
   - scripts/enrich_graph.py
   - scripts/export_to_taxonomy.py
+  - scripts/sanitize_taxonomy_diff.py
   - .gitignore
   - .graphifyignore
-last-verified-commit: 9594d44
+last-verified-commit: 382f99e
 source-doc: GUIDA-TECNICA.md
 ---
 
@@ -20,6 +21,8 @@ Due repository con scopi opposti: `lettore-doc` (privato, locale, mai online: co
 ## Gate finale con residue-pattern
 
 Fra `map_to_taxonomy.py` e `export_to_taxonomy.py --apply` c'e' un passaggio obbligatorio in `sanitize_taxonomy_diff.py` che scarta le entries insufficienti o rischiose dopo anonimizzazione: entries con troppo pochi caratteri alfanumerici significativi (soglia default 10, escludendo i placeholder), entries in cui pattern IP/EMAIL/hostname sopravvivono alla mappa per case-mismatch, entries con residui specifici del contesto del progetto (dominio aziendale nudo, nome azienda senza suffix ragione sociale, nome fornitore ricorrente, sede fisica). Per le new-capability filtra anche i nodi interni con residue e droppa l'intera capability se non ne rimane nessuno. E' difesa in profondita: la mappa e' first-line, il gate e' second-line.
+
+Al gate si e' aggiunta il 2026-07-29 la regola `residue-domain-third-party`, che copre una categoria che nessuno strato a monte modellava: il nome di dominio di un'azienda terza. Verificato che il buco fosse reale e non teorico, perche' la `anonymization_map` registra cinque categorie e nessuna e' il dominio, la categoria URL viene estratta da `extract_entities.py` ma non entra mai nella mappa, e nessuna delle tre regex che potrebbero pescare un dominio lo fa davvero (una vuole la chiocciola, una un prefisso infrastrutturale, la terza il maiuscolo con trattino). Il caso che l'aveva fatto notare, il nodo con il dominio di un'azienda cliente, non era stato pubblicato perche' aveva preso punteggio zero, non perche' il gate lo avesse fermato. La regola riconosce un dominio registrabile su una lista corta di suffissi e ha una allowlist per tre famiglie legittime, cioe' i vendor tecnologici citati come tecnologia, le fonti normative che i documenti di compliance nominano, e i namespace di codice con forma sintattica di dominio (`System.Net`, `java.io`, `ASP.NET`), confrontata per suffisso cosi' che un sottodominio di un dominio permesso resti permesso. La distinzione che regge la allowlist e' la stessa che ha portato a togliere la regola sulla ragione sociale nuda: un prodotto dichiarato come tecnologia e' curriculum, un sottodominio di infrastruttura e' un sistema di terzi. Misurata sui due corpora storici invece che sul solo diff sintetico, la regola scartava tre prodotti dichiarati, ora in allowlist, e cattura tre fughe reali che nessun pattern copriva, cioe' gli hostname interni ospitati presso il provider di hosting. Resta un falso negativo per costruzione sui suffissi fuori lista, allargabile solo su evidenza dal corpus.
 
 ## I nomi dei file come vettore di fuga
 
