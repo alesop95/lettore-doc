@@ -11,8 +11,9 @@ da map_to_taxonomy, poi scarta le entries che dopo anonimizzazione:
      pubblica;
 
   2) contengono ANCORA pattern residui riconoscibili come sensibili (IP
-     dotted-quad, email, hostname stile WIN*/USG*/NAS*/SRV*/VM<num>) che la
-     mappa non ha catturato (one-off, casi di parsing anomali). Si scarta
+     dotted-quad, email, hostname stile WIN*/USG*/NAS*/SRV*/VM<num>, domini
+     di terzi fuori allowlist) che la mappa non ha catturato (one-off, casi
+     di parsing anomali, categorie che la mappa non modella). Si scarta
      invece di lasciar passare — piu' sicuro perdere qualche entry marginale
      che pubblicare un IP interno.
 
@@ -34,6 +35,94 @@ from pathlib import Path
 
 PLACEHOLDER_RE = re.compile(
     r"\[(?:AZIENDA|PERSONA|EMAIL|IP|HOSTNAME)_\d+\]"
+)
+
+# ---------------------------------------------------------------------------
+# Domini di terzi
+# ---------------------------------------------------------------------------
+# La anonymization_map di enrich_graph non ha una categoria per i nomi di
+# dominio: registra COMPANY, PROPER_NOUN, EMAIL, IP_ADDR e HOSTNAME, e nessuna
+# delle tre regex che potrebbero pescare un dominio lo fa davvero. EMAIL_RE
+# vuole la chiocciola, HOSTNAME_PREFIX_RE vuole un prefisso infrastrutturale
+# tipo WIN o SRV, HOSTNAME_DASHED_RE vuole maiuscolo con trattino. La categoria
+# URL viene estratta ma non entra nella mappa. Il risultato e' che un dominio
+# nudo di un'azienda terza, per esempio quello comparso come nodo "Dominio
+# sabaerospace.com", attraversa indenne tutti gli strati: non e' stato
+# pubblicato solo perche' la classificazione gli ha dato punteggio zero, non
+# perche' un gate lo abbia fermato. Questa regola chiude il buco a valle,
+# dove passa tutto il testo destinato al repo pubblico.
+#
+# L'allowlist elenca i domini che su una pagina pubblica di tassonomia sono
+# legittimi e attesi, e viene confrontata per suffisso, cosi' che un
+# sottodominio di un dominio permesso resti permesso (docs.microsoft.com,
+# alesop95.github.io, che e' poi il dominio delle pagine pubblicate). Contiene
+# tre famiglie: i fornitori e i prodotti tecnologici citati come tecnologia, le
+# fonti normative e istituzionali che i documenti di compliance citano per
+# nome, e i namespace di codice che hanno la forma sintattica di un dominio
+# (System.Net, java.io, ASP.NET) e che senza eccezione esplicita verrebbero
+# scambiati per domini di terzi.
+THIRD_PARTY_DOMAIN_ALLOWLIST = (
+    # Fornitori e prodotti tecnologici
+    "microsoft.com", "microsoftonline.com", "office.com", "office365.com",
+    "azure.com", "windows.com", "live.com", "sharepoint.com",
+    "google.com", "gmail.com", "googleapis.com", "youtube.com",
+    "apple.com", "amazon.com", "amazonaws.com", "cloudflare.com",
+    "github.com", "github.io", "gitlab.com", "bitbucket.org",
+    "atlassian.com", "atlassian.net", "stackoverflow.com", "wikipedia.org",
+    "python.org", "pypi.org", "docker.com", "kubernetes.io",
+    "ubuntu.com", "canonical.com", "debian.org", "redhat.com", "suse.com",
+    "kernel.org", "gnu.org", "apache.org", "mozilla.org", "letsencrypt.org",
+    "vmware.com", "veeam.com", "acronis.com", "synology.com", "qnap.com",
+    "zyxel.com", "fortinet.com", "sophos.com", "cisco.com", "ubnt.com",
+    "eset.com", "kaspersky.com", "malwarebytes.com", "virustotal.com",
+    "nvidia.com", "intel.com", "amd.com", "dell.com", "hp.com", "lenovo.com",
+    "openai.com", "anthropic.com", "claude.ai", "obsidian.md",
+    # Aggiunti dopo aver misurato la regola sui due corpora gia' lavorati,
+    # endpoint e ARCHITETTURA: sono i soli falsi positivi che la misura ha
+    # prodotto, e sono tutti prodotti documentati come tecnologia, quindi
+    # bloccarli costava evidenze buone senza proteggere nulla. Le console
+    # citate sono URL pubblici generici del vendor, non sottodomini che
+    # identifichino il tenant. I provider di hosting restano invece esclusi
+    # per scelta, insieme a Fastnet che ha gia' una regola sua: da un loro
+    # sottodominio si ricostruisce l'infrastruttura interna.
+    "bitdefender.com", "myzyxel.com", "supremocontrol.com",
+    # Fonti normative e istituzionali
+    "iso.org", "w3.org", "ietf.org", "rfc-editor.org", "nist.gov",
+    "cisa.gov", "europa.eu", "garanteprivacy.it", "agid.gov.it", "acn.gov.it",
+    # Namespace di codice con la forma di un dominio
+    "asp.net", "vb.net", "ado.net", "system.net", "system.io",
+    "java.io", "java.net", "microsoft.net",
+)
+
+# TLD noti accettati come terminazione di un dominio registrabile. La lista e'
+# volutamente corta: ogni TLD in piu' allarga la superficie dei falsi positivi
+# su testo tecnico, perche' un TLD di due lettere collide facilmente con una
+# sigla o con una estensione di file. Sono ordinati per lunghezza decrescente
+# per evitare che l'alternativa piu' corta vinca su quella piu' lunga (co
+# prima di com).
+KNOWN_TLDS = tuple(sorted(
+    (
+        "com", "it", "net", "org", "eu", "io", "dev", "app", "ai", "cloud",
+        "info", "biz", "co", "gov", "edu", "tech",
+        "de", "fr", "es", "uk", "ch", "at", "nl", "be", "us", "ca",
+    ),
+    key=len,
+    reverse=True,
+))
+
+_DOMAIN_ALLOW_ALT = "|".join(re.escape(d) for d in THIRD_PARTY_DOMAIN_ALLOWLIST)
+_DOMAIN_TLD_ALT = "|".join(KNOWN_TLDS)
+
+# Il lookbehind impedisce di agganciare la coda di un dominio piu' lungo o la
+# parte destra di un indirizzo email; il lookahead di allowlist assorbe gli
+# eventuali sottodomini prima di confrontare il suffisso permesso.
+THIRD_PARTY_DOMAIN_RE = re.compile(
+    r"(?<![\w@.\-])"
+    rf"(?!(?:[a-z0-9\-]+\.)*(?:{_DOMAIN_ALLOW_ALT})(?![\w\-]))"
+    r"(?:[a-z0-9](?:[a-z0-9\-]*[a-z0-9])?\.)+"
+    rf"(?:{_DOMAIN_TLD_ALT})"
+    r"(?![\w\-])",
+    re.IGNORECASE,
 )
 
 # Residue patterns: se dopo anon il label li contiene ancora, la mappa ha
@@ -61,6 +150,11 @@ LEAK_PATTERNS = {
         r")\b"
     ),
     "residue-domain-intrawelt":  re.compile(r"\bintrawelt\.(?:com|it|de)\b", re.IGNORECASE),
+    # Dominio di un'azienda terza, cliente o fornitore, che nessuno strato a
+    # monte cattura. Sta dopo la regola del dominio aziendale perche' l'ordine
+    # del dizionario decide quale nome finisce nel report: intrawelt.com
+    # matcherebbe anche qui, ma va imputato alla sua regola specifica.
+    "residue-domain-third-party": THIRD_PARTY_DOMAIN_RE,
     # La ragione sociale nuda NON e' un residuo. Il datore di lavoro e'
     # dichiarato apertamente nella tassonomia pubblica ("IT team at Intrawelt
     # as IT Manager" in soft/index.md): trattarlo come segreto nelle evidenze

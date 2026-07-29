@@ -14,6 +14,12 @@ Per ogni entry "new_capability" nel diff:
   - Crea il file .md della nuova Capability con lo schema a 4 H2 standard
   - Stampa la riga da aggiungere manualmente a mkdocs.yml (non la aggiunge in automatico)
 
+Su ogni esecuzione, anche in dry-run e senza flag aggiuntivi:
+  - Cerca i collocamenti obsoleti, cioe' i blocchi di evidenza appartenenti a
+    nodi del corpus corrente che stanno su una pagina dove il diff non li
+    colloca piu', e li elenca. Con --prune-moved li rimuove; con
+    --prune-unexpected rimuove anche quelli dei nodi scesi sotto soglia.
+
 Uso:
   # Revisiona prima senza modifiche
   python scripts/export_to_taxonomy.py \\
@@ -61,6 +67,17 @@ def stable_id(node_id: str, cap_slug: str) -> str:
     return hashlib.sha256(raw).hexdigest()[:12]
 
 
+def node_key(node: dict) -> str:
+    """
+    Identificativo del nodo usato come primo termine dell'ID stabile.
+
+    Esiste come funzione perche' lo stesso criterio va applicato identico
+    dall'iniezione e dalla ricerca dei collocamenti obsoleti: se le due
+    divergessero, la seconda non riconoscerebbe i blocchi scritti dalla prima.
+    """
+    return node.get("id", node.get("label", ""))
+
+
 # ---------------------------------------------------------------------------
 # Anonimizzazione testi in uscita
 # ---------------------------------------------------------------------------
@@ -98,7 +115,7 @@ def build_evidence_block(
     Il blocco inizia con ### {label}, contiene un commento HTML invisibile
     come ID di idempotenza, e il testo di evidenza anonimizzato.
     """
-    sid      = stable_id(node.get("id", node.get("label", "")), cap_slug)
+    sid      = stable_id(node_key(node), cap_slug)
     label    = apply_anon(node.get("label", "Untitled"), anon_map)
     src_file = node.get("source_file", "")
     preview  = apply_anon(node.get("text_preview", "").strip(), anon_map)
@@ -145,18 +162,15 @@ def already_injected(md_text: str, sid: str) -> bool:
     return sid in md_text
 
 
-def replace_block(md_text: str, sid: str, new_block: str) -> str | None:
+def block_span(md_text: str, sid: str) -> tuple[int, int] | None:
     """
-    Sostituisce in blocco l'evidenza identificata da `sid`, restituendo None se
-    non la trova.
+    Delimita il blocco di evidenza identificato da `sid`, restituendo l'intervallo
+    di caratteri che lo contiene, oppure None se l'ancora non c'e'.
 
-    Serve alla modalita' `--refresh`. L'idempotenza per ID protegge dai
-    duplicati ma rende anche impossibile correggere un'evidenza gia' pubblicata:
-    quando un difetto della pipeline ha prodotto blocchi sbagliati, come i
-    quarantaquattro preview identici del ciclo ARCHITETTURA, l'unico modo di
-    ripararli era riscrivere a mano il repo pubblico, che le regole del progetto
-    vietano. Qui il blocco viene delimitato risalendo dall'ancora all'`###` che
-    la precede e scendendo fino alla prossima intestazione.
+    Il blocco si delimita risalendo dall'ancora all'`###` che la precede e
+    scendendo fino alla prossima intestazione di pari o superiore livello. La
+    stessa delimitazione serve sia alla riscrittura (`--refresh`) sia alla
+    rimozione (`--prune-*`): sono due operazioni diverse sullo stesso perimetro.
     """
     anchor = EVIDENCE_ANCHOR.format(stable_id=sid)
     pos = md_text.find(anchor)
@@ -174,7 +188,75 @@ def replace_block(md_text: str, sid: str, new_block: str) -> str | None:
     candidates = [p for p in (next_h3, next_h2) if p != -1]
     end = min(candidates) + 1 if candidates else len(md_text)
 
+    return start, end
+
+
+def replace_block(md_text: str, sid: str, new_block: str) -> str | None:
+    """
+    Sostituisce in blocco l'evidenza identificata da `sid`, restituendo None se
+    non la trova.
+
+    Serve alla modalita' `--refresh`. L'idempotenza per ID protegge dai
+    duplicati ma rende anche impossibile correggere un'evidenza gia' pubblicata:
+    quando un difetto della pipeline ha prodotto blocchi sbagliati, come i
+    quarantaquattro preview identici del ciclo ARCHITETTURA, l'unico modo di
+    ripararli era riscrivere a mano il repo pubblico, che le regole del progetto
+    vietano.
+    """
+    span = block_span(md_text, sid)
+    if span is None:
+        return None
+    start, end = span
     return md_text[:start] + new_block.rstrip() + "\n\n" + md_text[end:]
+
+
+def remove_block(md_text: str, sid: str) -> str | None:
+    """
+    Cancella il blocco di evidenza identificato da `sid`, restituendo None se
+    non lo trova.
+
+    Se il blocco era l'ultimo contenuto del file la coda viene ripulita, cosi'
+    da non lasciare righe vuote in fondo alla pagina.
+    """
+    span = block_span(md_text, sid)
+    if span is None:
+        return None
+    start, end = span
+    head, tail = md_text[:start], md_text[end:]
+    if not tail.strip():
+        return head.rstrip() + "\n"
+    return head + tail
+
+
+def restore_placeholder_if_empty(md_text: str) -> str:
+    """
+    Rimette il testo segnaposto sotto `## Projects & evidence` se la sezione e'
+    rimasta senza alcun blocco `###`.
+
+    Una pagina Capability con la sezione vuota resterebbe conforme al contratto
+    delle quattro H2 ma perderebbe la riga che dichiara al lettore come quella
+    sezione viene popolata: il segnaposto e' lo stato iniziale della pagina, ed
+    e' lo stato corretto in cui riportarla quando la si svuota.
+    """
+    sec_start = md_text.find(PROJECTS_SECTION_HEADER)
+    if sec_start == -1:
+        return md_text
+
+    body_start = sec_start + len(PROJECTS_SECTION_HEADER)
+    next_h2    = md_text.find("\n## ", body_start)
+    body_end   = next_h2 if next_h2 != -1 else len(md_text)
+    body       = md_text[body_start:body_end]
+
+    if "### " in body or PLACEHOLDER_TEXT in body:
+        return md_text
+
+    return (
+        md_text[:body_start]
+        + "\n\n"
+        + PLACEHOLDER_TEXT
+        + "\n"
+        + md_text[body_end:]
+    )
 
 
 def inject_into_section(md_text: str, block: str) -> str:
@@ -218,6 +300,160 @@ def inject_into_section(md_text: str, block: str) -> str:
             + "\n"
             + md_text[after_sec:]
         )
+
+
+# ---------------------------------------------------------------------------
+# Collocamenti obsoleti: individuazione delle evidenze da rimuovere
+# ---------------------------------------------------------------------------
+
+def collect_placements(diff: dict) -> tuple[dict[str, set[str]], set[str]]:
+    """
+    Estrae dal diff due insiemi: dove ciascun nodo e' atteso, e quali nodi il
+    diff conosce.
+
+    Il primo, `expected`, mappa la chiave di nodo sull'insieme degli slug di
+    Capability su cui il diff lo colloca. Il secondo, `known`, contiene ogni
+    nodo che il diff nomina a qualsiasi titolo, quindi anche i non classificati
+    e quelli raccolti nelle proposte di nuova Capability o nuovo Dominio.
+
+    La distinzione e' quella che rende sicura la rimozione. Confrontare gli ID
+    presenti nel repo pubblico con i soli ID attesi dal diff corrente
+    cancellerebbe tutte le evidenze dei cicli precedenti, i cui nodi non
+    compaiono in questo diff semplicemente perche' venivano da un altro corpus.
+    Un collocamento si puo' dichiarare obsoleto solo per un nodo che il diff
+    corrente conosce, e quindi per cui e' in grado di dire dove va.
+    """
+    expected: dict[str, set[str]] = defaultdict(set)
+    known: set[str] = set()
+
+    for item in diff.get("fit", []):
+        nk = node_key(item.get("node", {}))
+        if not nk:
+            continue
+        cap  = item.get("capability", {})
+        slug = cap.get("slug") or Path(cap.get("file", "")).stem
+        if slug:
+            expected[nk].add(slug)
+        known.add(nk)
+
+    for item in diff.get("unclassified", []):
+        nk = node_key(item.get("node", {}))
+        if nk:
+            known.add(nk)
+
+    for bucket in ("new_capability", "new_domain"):
+        for group in diff.get(bucket, []):
+            for n in group.get("nodes", []):
+                nk = node_key(n)
+                if nk:
+                    known.add(nk)
+
+    return expected, known
+
+
+def find_stale_placements(
+    docs_dir: Path,
+    expected: dict[str, set[str]],
+    known: set[str],
+) -> list[dict]:
+    """
+    Cerca nel repo pubblico i blocchi di evidenza che appartengono a nodi del
+    corpus corrente ma stanno su una pagina dove il diff non li colloca piu'.
+
+    La ricerca e' per costruzione e non per confronto: per ogni nodo conosciuto
+    e per ogni pagina candidata si calcola l'ID stabile che quel nodo avrebbe su
+    quella pagina, e lo si cerca fra le ancore effettivamente presenti. Il
+    calcolo e' un SHA256 per coppia, quindi qualche migliaio di hash su un ciclo
+    tipico, e ha il vantaggio di non richiedere alcun registro di cosa e' stato
+    pubblicato: l'ID e' il registro.
+
+    Il motivo della ricerca e' che l'ID stabile dipende dalla pagina di
+    destinazione, `sha256(node_id + "::" + cap_slug)`. Una riclassificazione che
+    sposta un nodo produce quindi un ID nuovo: `--refresh` scrive il blocco sulla
+    pagina giusta ma non riconosce piu' quello vecchio, che resta orfano, e
+    l'evidenza risulta duplicata su due pagine.
+
+    Ogni voce restituita porta la ragione dell'obsolescenza, che governa quale
+    dei due flag di rimozione la include: `moved` se il diff colloca il nodo
+    altrove, `unexpected` se non lo colloca da nessuna parte.
+    """
+    stale: list[dict] = []
+
+    for md_path in sorted(docs_dir.rglob("*.md")):
+        md_text = md_path.read_text(encoding="utf-8")
+        anchors = set(EVIDENCE_ANCHOR_RE.findall(md_text))
+        if not anchors:
+            continue
+
+        slug     = md_path.stem
+        rel_file = md_path.relative_to(docs_dir).as_posix()
+
+        for nk in known:
+            targets = expected.get(nk, set())
+            if slug in targets:
+                continue
+            sid = stable_id(nk, slug)
+            if sid not in anchors:
+                continue
+            stale.append({
+                "file":      rel_file,
+                "path":      md_path,
+                "slug":      slug,
+                "sid":       sid,
+                "node_key":  nk,
+                "reason":    "moved" if targets else "unexpected",
+                "moved_to":  sorted(targets),
+            })
+
+    return stale
+
+
+def prune_stale_placements(
+    stale: list[dict],
+    reasons: set[str],
+    apply_mode: bool,
+) -> int:
+    """
+    Rimuove dalle pagine i collocamenti obsoleti la cui ragione e' fra quelle
+    abilitate, e restituisce quanti blocchi sono stati rimossi.
+
+    Le voci si raggruppano per file cosi' che un file con piu' rimozioni venga
+    letto e riscritto una volta sola, e la riscrittura conserva il line-ending
+    nativo del file per non generare un diff CRLF↔LF su pagine preesistenti.
+    """
+    selected = [s for s in stale if s["reason"] in reasons]
+    if not selected:
+        return 0
+
+    by_path: dict[Path, list[dict]] = defaultdict(list)
+    for s in selected:
+        by_path[s["path"]].append(s)
+
+    removed = 0
+    for md_path, entries in sorted(by_path.items()):
+        raw_bytes        = md_path.read_bytes()
+        original_newline = "\r\n" if b"\r\n" in raw_bytes else "\n"
+        md_text          = md_path.read_text(encoding="utf-8")
+        original_text    = md_text
+
+        local_removed = 0
+        for s in entries:
+            pruned = remove_block(md_text, s["sid"])
+            if pruned is None:
+                print(f"  ⚠ ancora {s['sid']} non delimitabile in {s['file']}",
+                      file=sys.stderr)
+                continue
+            md_text = pruned
+            local_removed += 1
+
+        if local_removed:
+            md_text = restore_placeholder_if_empty(md_text)
+            removed += local_removed
+            print(f"  {entries[0]['file']}: -{local_removed} evidenze", file=sys.stderr)
+            if apply_mode and md_text != original_text:
+                md_path.write_text(md_text, encoding="utf-8", newline=original_newline)
+
+    return removed
 
 
 # ---------------------------------------------------------------------------
@@ -293,12 +529,29 @@ def main() -> None:
                              "saltarli. Serve a correggere evidenze pubblicate con un "
                              "difetto della pipeline; senza questo flag l'idempotenza "
                              "per ID le protegge e non c'e' modo di aggiornarle.")
+    parser.add_argument("--prune-moved", action="store_true",
+                        help="Rimuove i blocchi di evidenza dei nodi che questo diff "
+                             "colloca su una Capability diversa da quella dove sono "
+                             "pubblicati. Senza questo flag una riclassificazione "
+                             "duplica l'evidenza su due pagine, perche' l'ID stabile "
+                             "dipende dalla pagina e quello vecchio resta orfano.")
+    parser.add_argument("--prune-unexpected", action="store_true",
+                        help="Rimuove anche i blocchi dei nodi che questo diff conosce "
+                             "ma non colloca piu' su nessuna Capability, perche' sono "
+                             "scesi sotto soglia. Piu' invasivo di --prune-moved: una "
+                             "variazione di soglia cancellerebbe evidenze valide, "
+                             "quindi va usato solo dopo aver letto l'elenco in dry-run.")
     mode_group.add_argument("--apply",   action="store_true",
                              help="Applica effettivamente le modifiche")
     args = parser.parse_args()
 
     apply_mode   = args.apply
     refresh_mode = args.refresh
+    prune_reasons: set[str] = set()
+    if args.prune_moved:
+        prune_reasons.add("moved")
+    if args.prune_unexpected:
+        prune_reasons.add("unexpected")
     diff_path    = Path(args.diff_json).resolve()
     skills_repo  = Path(args.skills_repo).resolve()
 
@@ -434,6 +687,42 @@ def main() -> None:
             pass  # Nessuna modifica per questo file
 
     # -----------------------------------------------------------------------
+    # Collocamenti obsoleti
+    # -----------------------------------------------------------------------
+    # La ricerca gira sempre, anche senza flag di prune, perche' il suo valore
+    # primario e' diagnostico: un'evidenza duplicata su due pagine e' invisibile
+    # sia nel riepilogo delle iniezioni sia nel --numstat, e si nota solo
+    # confrontando gli ID. La rimozione, che e' distruttiva, resta invece
+    # subordinata a un flag esplicito.
+    expected, known = collect_placements(diff)
+    stale        = find_stale_placements(docs_dir, expected, known) if known else []
+    pruned_count = 0
+
+    if stale:
+        n_moved = sum(1 for s in stale if s["reason"] == "moved")
+        n_unexp = len(stale) - n_moved
+        print(f"\n--- COLLOCAMENTI OBSOLETI: {len(stale)} "
+              f"({n_moved} spostati, {n_unexp} non piu' previsti) ---", file=sys.stderr)
+        for s in sorted(stale, key=lambda x: (x["reason"], x["file"])):
+            label = apply_anon(s["node_key"], anon_map)
+            if s["reason"] == "moved":
+                print(f"  {s['file']}  [{s['sid']}]  {label}", file=sys.stderr)
+                print(f"      ora previsto su: {', '.join(s['moved_to'])}", file=sys.stderr)
+            else:
+                print(f"  {s['file']}  [{s['sid']}]  {label}", file=sys.stderr)
+                print(f"      non piu' previsto su nessuna Capability", file=sys.stderr)
+
+        if prune_reasons:
+            print(f"\n  Rimozione attiva per: {', '.join(sorted(prune_reasons))}",
+                  file=sys.stderr)
+            pruned_count = prune_stale_placements(stale, prune_reasons, apply_mode)
+        else:
+            print("\n  Nessun flag di rimozione attivo: i blocchi restano dove sono.",
+                  file=sys.stderr)
+            print("  Usa --prune-moved (e se serve --prune-unexpected) per rimuoverli.",
+                  file=sys.stderr)
+
+    # -----------------------------------------------------------------------
     # Processa NEW CAPABILITY
     # -----------------------------------------------------------------------
     new_caps = diff.get("new_capability", [])
@@ -491,6 +780,10 @@ def main() -> None:
           file=sys.stderr)
     if refresh_mode:
         print(f"  Riscritte (refresh):   {refreshed_count}", file=sys.stderr)
+    if stale:
+        print(f"  Collocamenti obsoleti: {len(stale)}", file=sys.stderr)
+        print(f"  Rimozioni {'eseguite' if apply_mode else 'pianificate'}:  {pruned_count}",
+              file=sys.stderr)
     print(f"  Già presenti (skip):   {skipped_dup}", file=sys.stderr)
     print(f"  File mancanti:         {missing_files}", file=sys.stderr)
     if new_caps:

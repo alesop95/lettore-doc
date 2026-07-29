@@ -10,6 +10,7 @@ CLI:
     python scripts/ingest_state.py status
     python scripts/ingest_state.py status --folder "<path>"
     python scripts/ingest_state.py track --folder "<path>" --source ONEDRIVE [--commit <sha>]
+    python scripts/ingest_state.py resnapshot [--folder "<path>"] [--apply]
     python scripts/ingest_state.py untrack --folder "<path>"
 
 Lo state file e' la sorgente di verita' del progresso ingest, locale alla
@@ -32,7 +33,20 @@ STATE_PATH = REPO_ROOT / "_intermediate" / "ingest_state.json"
 
 TEXT_EXTENSIONS = {".docx", ".txt", ".md"}
 EXCLUDE_PREFIXES = ("~$",)
-EXCLUDE_DIR_NAMES = {"_archive", "template", "templates"}
+# Directory che il digest non deve mai contare, confrontate in minuscolo perche'
+# su Windows la stessa cartella compare indifferentemente come "Templates" o
+# "templates" e un confronto sensibile al caso la lascerebbe passare.
+# "web scraping - downloaded web sites" e' l'archivio di brochure di fondi di
+# terzi sotto Miscellaneous procedure e utilities: sono novecentonovantasei file
+# che il digest segnalava come nuovi a ogni ripresa di sessione, non sono
+# materiale da ingerire, e per di piu' sono contenuto di terzi che non andrebbe
+# comunque nella tassonomia pubblica.
+EXCLUDE_DIR_NAMES = {
+    "_archive",
+    "template",
+    "templates",
+    "web scraping - downloaded web sites",
+}
 
 STATE_VERSION = 1
 
@@ -67,7 +81,7 @@ def normalize_folder_key(folder: Path) -> str:
 
 def iter_text_files(folder: Path) -> Iterable[Path]:
     for root, dirnames, filenames in os.walk(folder):
-        dirnames[:] = [d for d in dirnames if d not in EXCLUDE_DIR_NAMES]
+        dirnames[:] = [d for d in dirnames if d.lower() not in EXCLUDE_DIR_NAMES]
         for fn in filenames:
             if fn.startswith(EXCLUDE_PREFIXES):
                 continue
@@ -224,6 +238,71 @@ def cmd_track(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_resnapshot(args: argparse.Namespace) -> int:
+    """
+    Riallinea lo snapshot di una o tutte le subfolder tracciate conservando la
+    data e il commit dell'ultimo ingest.
+
+    Serve quando cambiano le regole di esclusione e non il corpus. Aggiungere una
+    directory a EXCLUDE_DIR_NAMES non ripulisce lo state file, che continua a
+    contenere i file di quella directory: il digest smette di vederli sul disco e
+    li segnala come cancellati, sostituendo un rumore con un altro. Rifare
+    `track` li assorbirebbe, ma dichiarerebbe anche un ingest che non e'
+    avvenuto, falsificando l'unico dato di progresso che il file custodisce.
+    Qui si riscrive la sola sezione `files`, e il riepilogo dice cosa e' stato
+    assorbito cosi' che l'operazione resti ispezionabile.
+    """
+    state = load_state()
+    subs = state.get("subfolders", {})
+    if not subs:
+        print("Nessuna subfolder tracciata.", file=sys.stderr)
+        return 1
+
+    target_key = None
+    if args.folder:
+        target_key = normalize_folder_key(resolve_folder_arg(args.folder))
+        if target_key not in subs:
+            print(f"Subfolder non tracciata: {target_key}", file=sys.stderr)
+            return 1
+
+    touched = 0
+    for key, entry in sorted(subs.items()):
+        if target_key and key != target_key:
+            continue
+
+        folder = Path(entry.get("absolute_path", key))
+        label = entry.get("label") or folder.name
+        if not folder.exists():
+            print(f"{label}: folder non trovata su disco, salto")
+            continue
+
+        old_files = entry.get("files", {})
+        cur_files = snapshot_folder(folder)
+        diff = diff_snapshot(old_files, cur_files)
+
+        if not (diff["new"] or diff["modified"] or diff["deleted"]):
+            print(f"{label}: gia' allineata ({len(cur_files)} file)")
+            continue
+
+        print(f"{label}: {len(old_files)} -> {len(cur_files)} file "
+              f"(+{len(diff['new'])} -{len(diff['deleted'])} "
+              f"~{len(diff['modified'])})")
+        if args.apply:
+            entry["files"] = cur_files
+            touched += 1
+
+    if not args.apply:
+        print("\nSola verifica. Usa --apply per riscrivere lo snapshot.")
+        return 0
+
+    if touched:
+        save_state(state)
+        print(f"\nOK - snapshot riallineato per {touched} subfolder in {STATE_PATH}")
+    else:
+        print("\nNulla da riallineare.")
+    return 0
+
+
 def cmd_untrack(args: argparse.Namespace) -> int:
     folder = resolve_folder_arg(args.folder)
     state = load_state()
@@ -250,6 +329,16 @@ def build_parser() -> argparse.ArgumentParser:
     p_track.add_argument("--source", required=False, help="Label sorgente (es. ONEDRIVE, PORTFOLIO)")
     p_track.add_argument("--commit", required=False, help="Commit SHA del skills-repo associato a questo ingest")
     p_track.set_defaults(func=cmd_track)
+
+    p_resnap = sub.add_parser(
+        "resnapshot",
+        help="Riallinea lo snapshot conservando data e commit dell'ultimo ingest "
+             "(da usare quando cambiano le regole di esclusione, non il corpus)",
+    )
+    p_resnap.add_argument("--folder", help="Una sola subfolder; senza questo, tutte")
+    p_resnap.add_argument("--apply", action="store_true",
+                          help="Scrive; senza questo flag e' sola verifica")
+    p_resnap.set_defaults(func=cmd_resnapshot)
 
     p_untrack = sub.add_parser("untrack", help="Rimuove una subfolder dal tracking")
     p_untrack.add_argument("--folder", required=True, help="Path della subfolder")
