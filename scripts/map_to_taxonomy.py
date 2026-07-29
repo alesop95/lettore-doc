@@ -82,19 +82,44 @@ def recall_score(node_tokens: set[str], keyword_set: set[str]) -> float:
     return len(matches) / len(node_tokens)
 
 
+# Un fit viene marcato da verificare quando il margine sul secondo classificato
+# e' entro questa soglia. Il caso limite, margine zero, e' un pareggio: la
+# Capability vincente e' quella che l'iterazione ha incontrato per prima, cioe'
+# l'ordine del nav di MkDocs, non un giudizio. Misurato sul ciclo Cybersec
+# endpoint: otto fit su ventotto erano pareggi, e tre delle quattro assegnazioni
+# poi corrette a mano stavano fra quelli.
+REVIEW_MARGIN = 0.05
+
+# Un fit vinto su questo numero di token o meno e' fragile a prescindere dal
+# margine: il caso `SGSI - Sistema di Gestione Sicurezza Informazioni`, instradato
+# a IT Administration & Billing con margine ampio ma sulla base del solo token
+# accidentale `sistema`, aveva confidenza apparente massima ed evidenza minima.
+REVIEW_MIN_MATCHED = 1
+
+
 def match_capability(
     node_tokens: set[str],
     taxonomy: dict,
-) -> tuple[float, dict | None, dict | None]:
+) -> tuple[float, dict | None, dict | None, dict]:
     """
-    Restituisce (best_score, best_capability_dict, best_domain_dict).
+    Restituisce (best_score, best_capability_dict, best_domain_dict, review).
+
     Considera anche parziale: anche se nessuna Capability supera THRESHOLD_FIT,
     individua il Domain più affine per suggerire new_capability.
+
+    Il quarto valore descrive quanto fidarsi del risultato. Il punteggio da solo
+    non lo dice: 0.38 sembra alto, ma se la seconda Capability ha lo stesso 0.38
+    la scelta e' arbitraria. Serve quindi il margine sul secondo classificato e
+    l'elenco dei token che hanno deciso, cosi' la revisione manuale, che resta
+    obbligatoria, si concentra sui casi incerti invece di rileggere tutto.
     """
     best_cap_score   = 0.0
     best_cap         = None
     best_domain      = None
     best_domain_score = 0.0
+    second_score     = 0.0
+    second_name      = None
+    best_matched: list[str] = []
 
     for domain in taxonomy["domains"]:
         domain_kw_set = set(domain.get("domain_keywords", []))
@@ -108,13 +133,31 @@ def match_capability(
             cap_kw_set = set(cap.get("keywords", []))
             c_score = recall_score(node_tokens, cap_kw_set)
             if c_score > best_cap_score:
+                # Il precedente vincitore diventa il secondo classificato.
+                second_score = best_cap_score
+                second_name  = best_cap["name"] if best_cap else None
                 best_cap_score = c_score
                 best_cap = cap
+                best_matched = sorted(node_tokens & cap_kw_set)
                 if d_score == 0.0:
                     # Forza il domain al Capability domain anche se d_score basso
                     best_domain = domain
+            elif c_score > second_score:
+                second_score = c_score
+                second_name  = cap["name"]
 
-    return best_cap_score, best_cap, best_domain
+    margin = round(best_cap_score - second_score, 4)
+    review = {
+        "margin":        margin,
+        "runner_up":     second_name,
+        "runner_up_score": round(second_score, 3),
+        "matched":       best_matched,
+        "needs_review":  bool(
+            best_cap is not None
+            and (margin <= REVIEW_MARGIN or len(best_matched) <= REVIEW_MIN_MATCHED)
+        ),
+    }
+    return best_cap_score, best_cap, best_domain, review
 
 
 # ---------------------------------------------------------------------------
@@ -195,7 +238,9 @@ def classify_nodes(
         community_tokens = tokenize(cname)
         combined_tokens = node_tokens | community_tokens
 
-        cap_score, best_cap, best_domain = match_capability(combined_tokens, taxonomy)
+        cap_score, best_cap, best_domain, review = match_capability(
+            combined_tokens, taxonomy
+        )
 
         if cap_score >= THRESHOLD_FIT and best_cap:
             # Individua il domain di questa capability
@@ -210,6 +255,7 @@ def classify_nodes(
                 "domain":      cap_domain,
                 "score":       round(cap_score, 3),
                 "community_id": community_id,
+                "review":      review,
             })
         elif cap_score >= MIN_SCORE_REPORT:
             near_miss_by_community[community_id].append((node, best_domain, cap_score))
@@ -273,7 +319,7 @@ def classify_nodes(
     for he in hyperedges:
         label  = he.get("label", "")
         tokens = tokenize(label)
-        cap_score, best_cap, best_domain = match_capability(tokens, taxonomy)
+        cap_score, best_cap, best_domain, review = match_capability(tokens, taxonomy)
         # Gli hyperedge si aggiungono solo ai fit forti (sono già aggregazioni)
         if cap_score >= THRESHOLD_FIT and best_cap:
             cap_domain = None
@@ -289,6 +335,7 @@ def classify_nodes(
                 "domain":      cap_domain,
                 "score":       round(cap_score, 3),
                 "is_hyperedge": True,
+                "review":      review,
             })
 
     return results
@@ -305,6 +352,7 @@ def render_markdown(results: dict, source_graph: str) -> str:
     n_new    = len(results["new_capability"])
     n_dom    = len(results["new_domain"])
     n_unc    = len(results["unclassified"])
+    n_rev    = sum(1 for f in results["fit"] if (f.get("review") or {}).get("needs_review"))
 
     lines += [
         f"# Taxonomy Diff",
@@ -317,9 +365,16 @@ def render_markdown(results: dict, source_graph: str) -> str:
         f"| Classificazione | Nodi |",
         f"|-----------------|------|",
         f"| ✅ Fit (Capability esistente) | {n_fit} |",
+        f"| 🔍 di cui da verificare       | {n_rev} |",
         f"| 🆕 New Capability suggerite   | {n_new} |",
         f"| 🗂 New Domain suggeriti       | {n_dom} |",
         f"| ⚠️ Non classificati           | {n_unc} |",
+        f"",
+        f"> I fit marcati **DA VERIFICARE** sono quelli in cui la destinazione non e'",
+        f"> determinata dal punteggio: margine entro {REVIEW_MARGIN} sul secondo",
+        f"> classificato (a margine zero e' un pareggio, e vince l'ordine del nav",
+        f"> di MkDocs) oppure decisione poggiata su un solo token. La revisione",
+        f"> manuale resta obbligatoria su tutto, ma qui va guardata per prima.",
         f"",
         f"---",
         f"",
@@ -350,7 +405,23 @@ def render_markdown(results: dict, source_graph: str) -> str:
                 node = item["node"]
                 is_hyper = item.get("is_hyperedge", False)
                 tag = " *(hyperedge)*" if is_hyper else ""
-                lines.append(f"- **{node['label']}**{tag} (score: {item['score']})")
+                rv = item.get("review") or {}
+                flag = "  **DA VERIFICARE**" if rv.get("needs_review") else ""
+                lines.append(f"- **{node['label']}**{tag} (score: {item['score']}){flag}")
+                if rv.get("needs_review"):
+                    # Si dice perche', altrimenti il flag e' un allarme senza
+                    # informazione e la revisione non sa cosa guardare.
+                    motivi = []
+                    if rv.get("margin", 1) <= REVIEW_MARGIN:
+                        ru = rv.get("runner_up") or "?"
+                        motivi.append(
+                            f"margine {rv.get('margin')} sul secondo classificato "
+                            f"({ru}, {rv.get('runner_up_score')})"
+                        )
+                    if len(rv.get("matched") or []) <= REVIEW_MIN_MATCHED:
+                        motivi.append("deciso su un solo token")
+                    lines.append(f"  - Incertezza: {'; '.join(motivi)}")
+                    lines.append(f"  - Token che hanno deciso: `{', '.join(rv.get('matched') or [])}`")
                 if node.get("source_file"):
                     lines.append(f"  - Source: `{node['source_file']}`")
                 if node.get("text_preview"):
