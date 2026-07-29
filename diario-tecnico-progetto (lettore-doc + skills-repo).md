@@ -1242,6 +1242,60 @@ Undici pagine aggiornate, ottantaquattro evidenze fra riscritte e aggiunte, duec
 
 La lezione che questa sessione aggiunge alle precedenti è che un sistema che pubblica ha bisogno non solo di controlli in avanti, ma anche di una via per tornare indietro su ciò che ha già pubblicato. L'idempotenza protegge dai duplicati e insieme immobilizza gli errori: senza una modalità di riscrittura, ogni difetto della pipeline diventava permanente nel prodotto pubblico, con la sola alternativa di un intervento manuale che le regole vietano per ragioni giuste. La capacità di correggere retroattivamente non è un accessorio, è parte del contratto di affidabilità di una pipeline che scrive verso l'esterno.
 
+## C.15 Togliere ciò che è già pubblicato, e misurare le regole invece di crederci (2026-07-29)
+
+La sezione precedente si chiudeva dicendo che una pipeline che scrive verso l'esterno ha bisogno di una via per tornare indietro su ciò che ha già pubblicato, e aveva aggiunto la modalità di riscrittura. Questa sessione affronta il pezzo che mancava, cioè la rimozione, e nel farlo tocca altri tre punti rimasti in coda. Il filo che li unisce non era previsto: in tre casi su quattro la misura sul corpus reale ha corretto la soluzione che sembrava giusta a ragionamento.
+
+### Perché riscrivere non basta a spostare un nodo
+
+L'identificatore stabile di un'evidenza è uno hash del nodo e della Capability di destinazione. Questa scelta ha un effetto collaterale che si vede solo quando si prova a riclassificare: se un nodo cambia pagina, l'identificatore cambia con lui. La modalità di riscrittura non riconosce più quello vecchio, perché per lei non esiste, quindi scrive il blocco nuovo sulla pagina giusta e lascia il vecchio dove era. Il risultato non è un errore visibile ma una evidenza duplicata su due pagine, di cui una sbagliata.
+
+Il difetto si è manifestato in una prova a vuoto che riportava cinque iniezioni pianificate e venticinque già presenti, dove i cinque erano nodi mal instradati che avevano preso un identificatore nuovo. Nulla in quel riepilogo diceva che esistevano cinque blocchi orfani, e nemmeno il conteggio delle righe modificate lo avrebbe detto, perché non c'è nessuna riga da modificare. Finché la rimozione non esisteva, nessun cambio della funzione di punteggio poteva essere applicato allo storico: era il vero prerequisito, non una comodità.
+
+### Il punto delicato è cosa si può dichiarare obsoleto
+
+L'implementazione ovvia sarebbe confrontare gli identificatori presenti nel repository pubblico con quelli attesi dal diff corrente, e rimuovere la differenza. Sarebbe distruttiva: cancellerebbe le evidenze di tutti i cicli precedenti, i cui nodi non compaiono in questo diff semplicemente perché venivano da un altro corpus. L'assenza dal diff non è un giudizio, è ignoranza.
+
+Un collocamento si può dichiarare obsoleto solo per un nodo che il diff corrente conosce, e quindi per cui è in grado di dire dove va. Il diff porta questa informazione in due insiemi distinti: i nodi con una destinazione, che sono i fit, e i nodi conosciuti a qualsiasi titolo, che comprendono anche i non classificati e quelli raccolti nelle proposte di nuova Capability. La ricerca è poi per costruzione e non per confronto: per ogni nodo conosciuto e per ogni pagina candidata si ricalcola l'identificatore che quel nodo avrebbe su quella pagina e lo si cerca fra le ancore effettivamente presenti. Costa uno hash per coppia, qualche migliaio su un ciclo tipico, e ha il vantaggio di non richiedere alcun registro di cosa è stato pubblicato: l'identificatore è il registro.
+
+Le due ragioni di obsolescenza restano distinte perché hanno rischi diversi. Un nodo che il diff colloca altrove è un caso chiuso, e la rimozione è sicura. Un nodo che il diff non colloca da nessuna parte, perché è sceso sotto soglia, è un caso aperto: una variazione di soglia cancellerebbe evidenze valide. Hanno quindi due flag separati, e nessuno dei due è attivo per default.
+
+La ricerca invece gira sempre, anche a vuoto e senza flag, perché il suo valore primo è diagnostico. Un'evidenza duplicata su due pagine è invisibile sia nel riepilogo delle iniezioni sia nel conteggio delle righe: si vede solo confrontando gli identificatori, e se il confronto richiede di ricordarsi di chiederlo, non verrà fatto proprio nelle sessioni in cui servirebbe.
+
+### La prova, e cosa dice il repository reale
+
+La verifica è stata fatta su un repository sintetico costruito per riprodurre la sequenza esatta: un primo ciclo che pubblica due nodi su una pagina, un secondo che sposta il primo nodo su un'altra pagina e fa scendere il secondo sotto soglia. Senza flag il riepilogo elenca correttamente uno spostato e uno non più previsto e non tocca nulla; con il flag degli spostati il blocco orfano scompare dalla pagina vecchia e resta solo quello nuovo; aggiungendo il secondo flag la pagina si svuota e torna al testo segnaposto iniziale, con le quattro intestazioni di contratto intatte. Verificato anche il caso che conta di più, cioè che un diff i cui nodi sono estranei alle pagine pubblicate non rimuova nulla nemmeno con entrambi i flag attivi.
+
+Sul repository pubblico reale la passata riporta zero collocamenti obsoleti su trenta evidenze coerenti. È la conferma che non c'è debito pregresso, e insieme la prova che la ricerca non produce falsi positivi su un corpus vero.
+
+### Un dominio di terzi che nessuno strato fermava
+
+Il secondo punto in coda riguardava la riservatezza e non la qualità. Il gate dei residui copriva il dominio aziendale ma non un dominio di terzi arbitrario, e il caso che l'aveva fatto notare, il nodo che citava il dominio di un'azienda cliente, non era stato pubblicato solo perché la classificazione gli aveva dato punteggio zero. Non era un gate che aveva funzionato, era un caso fortunato.
+
+La verifica degli strati a monte ha confermato che il buco era reale e non teorico. La mappa di anonimizzazione registra cinque categorie, azienda, nome proprio, indirizzo di posta, indirizzo di rete e hostname, e nessuna di esse è il nome di dominio; la categoria degli indirizzi web viene estratta ma non entra nella mappa; e nessuna delle regole che potrebbero pescare un dominio lo fa davvero, perché una vuole la chiocciola, un'altra un prefisso infrastrutturale, la terza il maiuscolo con trattino. Un dominio nudo minuscolo attraversava indenne tutti gli strati.
+
+La regola nuova riconosce un nome di dominio registrabile e ha una lista di eccezioni per i domini che su una pagina pubblica di tassonomia sono legittimi e attesi, cioè i fornitori tecnologici citati come tecnologia, le fonti normative che i documenti di compliance nominano, e i namespace di codice che hanno la forma sintattica di un dominio e senza eccezione esplicita verrebbero scambiati per tali. La lista dei suffissi[^25] è volutamente corta, perché ogni suffisso in più allarga i falsi positivi su testo tecnico.
+
+Qui è arrivata la correzione dalla misura. La regola era stata provata su un diff sintetico e passava, ma provata sui due corpora già lavorati scartava tre domini legittimi, cioè il produttore della soluzione di sicurezza documentata nel ciclo precedente e due console di prodotto. Sono tecnologie che le pagine dichiarano per nome: bloccarle costava evidenze buone senza proteggere nulla, e sono finite in lista di eccezione. Dopo la correzione i falsi positivi sono zero su entrambi i corpora e il corpus di endpoint conserva le stesse trenta evidenze di prima, quindi nessuna regressione. Nel frattempo la regola ha catturato tre fughe reali che nessun pattern copriva, gli hostname interni ospitati presso il provider di hosting, che sono esattamente il tipo di informazione da cui si ricostruisce un'infrastruttura. La distinzione che regge la lista è la stessa di C.14: un prodotto dichiarato come tecnologia è curriculum, un sottodominio di infrastruttura è un sistema di terzi.
+
+### Rumore che si sposta invece di sparire
+
+Il terzo punto sembrava due righe di codice. Il digest di stato segnalava novecentonovantasei file nuovi su una subfolder, tutti pagine salvate da siti di terzi che non sono materiale da ingerire, e bastava aggiungere quella directory alle esclusioni. Fatto questo, il digest ha cominciato a segnalare duecentonovantuno file cancellati: lo snapshot registrato conteneva ancora i file che ora la scansione non vede più. Un rumore sostituito da un altro.
+
+La via ovvia sarebbe rifare la registrazione della subfolder, che riscrive lo snapshot. Ma quel comando aggiorna anche la data e il commit dell'ultimo ingest, e dichiarerebbe un ingest mai avvenuto, falsificando l'unico dato di progresso che il file custodisce. È stato quindi aggiunto un comando distinto che riallinea la sola sezione dei file conservando data e commit, con la sua modalità di sola verifica, pensato esattamente per il caso in cui cambiano le regole di esclusione e non il corpus. Applicato dopo aver controllato che tutti e duecentonovantuno i file assorbiti stessero dentro la directory esclusa, il digest è tornato pulito e la data di ingest di metà luglio è intatta. Il confronto dei nomi di directory è anche passato a insensibile al caso, perché su questo sistema la stessa cartella compare indifferentemente maiuscola e minuscola e un confronto sensibile la lasciava passare.
+
+### L'unica pagina fuori contratto
+
+Il quarto punto era una Capability che non poteva ricevere evidenze perché il suo indice usciva a zero parole chiave. La diagnosi ha smentito l'ipotesi di partenza, che fosse un parsing troppo rigido: la pagina non aveva nessuna delle quattro intestazioni di contratto, era l'unica così su trentuno, e tutto il suo contenuto, che è ricco, stava sotto cinque intestazioni tematiche che lo script non guarda. Un secondo sintomo dello stesso disallineamento era che l'indice riportava una Capability chiamata Overview, perché il nome viene dall'etichetta della foglia nel nav e quella foglia si chiamava così.
+
+La pagina è stata portata a contratto senza toccare una parola della prosa, declassando le cinque intestazioni tematiche a terzo livello sotto la sezione delle responsabilità e aggiungendo le tre sezioni mancanti; le sole righe rimosse dal diff sono le cinque intestazioni. Il rischio vero era però un altro, e non stava nel ripristino ma in ciò che il ripristino abilita: una pagina nuova con novanta parole chiave, le più numerose dell'intera tassonomia, che compete con le pagine tecniche su termini generici e ne ruba le evidenze. Per questo la sezione delle tecnologie è stata scritta sul lessico delle competenze trasversali evitando deliberatamente i termini delle pagine tecniche, e soprattutto l'effetto è stato misurato invece che dedotto: zero destinazioni cambiate sui trentuno fit del corpus di endpoint e zero sugli ottantacinque del corpus infrastrutturale. Resta da sapere che quella pagina è ora al taglio massimo delle parole chiave, quindi è la prima da guardare se emerge un instradamento sbagliato.
+
+### Chiusura
+
+Quattro voci di coda chiuse, tre script modificati nel motore privato e due file nella tassonomia pubblica, nessuna regressione misurata sui due corpora già lavorati. Resta aperto il prossimo ciclo di ingest, che richiede la scelta della subfolder.
+
+La lezione di questa sessione è metodologica e vale oltre i quattro casi. Tre volte su quattro la soluzione corretta a ragionamento era sbagliata alla misura: la regola sui domini passava il test sintetico e scartava tre tecnologie dichiarate, la correzione delle esclusioni spostava il rumore invece di toglierlo, e la diagnosi della pagina senza parole chiave puntava sul parsing quando il difetto era editoriale. Il costo della misura è stato ogni volta di pochi minuti, perché i corpora già lavorati sono su disco e gli stati intermedi sono file ispezionabili: è il rendimento di quella scelta architetturale, non un merito della sessione. La regola operativa che ne segue è che una modifica al gate di riservatezza o alla classificazione non si considera fatta finché non è stata rilanciata sui corpora storici e confrontata con l'esito precedente.
+
 # Lezioni apprese
 
 Prima di costruire qualcosa di nuovo, vale sempre la pena verificare se la funzionalita' necessaria esiste gia' nel codice esistente. Il piano a quattro script sarebbe risultato in meno di duecento righe di codice che replicavano una versione notevolmente piu' povera di cio' che parse_docx.py e extract_entities.py gia' facevano. Il tempo investito nell'analisi del sistema esistente prima di progettare il nuovo ha eliminato mesi di lavoro ridondante.
@@ -1307,4 +1361,6 @@ Qualsiasi script che scrive in un repository deve essere idempotente. Il meccani
 [^23]: NER, Named Entity Recognition - riconoscimento automatico di entità nominate in un testo, qui usato per individuare i nomi di persona da mascherare.
 
 [^24]: PSK, Pre-Shared Key - chiave condivisa in anticipo fra due estremi di un tunnel VPN, che compare in chiaro nei file di configurazione dei firewall.
+
+[^25]: TLD, Top Level Domain - il suffisso finale di un nome di dominio, per esempio com oppure it, che ne determina il registro di appartenenza.
 
