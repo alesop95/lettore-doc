@@ -1,0 +1,45 @@
+#!/bin/sh
+# Hook di pre-commit per il repository pubblico della tassonomia.
+#
+# Blocca il commit se verify_public_repo.py trova qualcosa di sensibile nel
+# contenuto in stage. Esiste perche' la sola fuga trovata prima dell'audit del
+# 2026-08-03 era stata vista a mano, e le quattro credenziali pubblicate erano
+# rimaste mesi: un controllo che dipende dal ricordarsi di eseguirlo non e' un
+# controllo. Qui diventa non aggirabile per distrazione.
+#
+# Si installa con scripts/install_hooks.ps1 dal repository lettore-doc, che lo
+# copia in .git/hooks/ del repository pubblico. Il file versionato e' questo:
+# quello dentro .git/ non e' tracciato da nessuno e su una macchina nuova non
+# esiste.
+#
+# Per saltarlo in un caso motivato serve --no-verify, che e' esplicito e resta
+# nella storia del comando. Non e' previsto disattivarlo in altro modo.
+
+set -e
+
+LETTORE_DOC="${LETTERDOC_HOME:-E:/lettore-doc}"
+VENV_PY="$LETTORE_DOC/.venv/Scripts/python.exe"
+VERIFIER="$LETTORE_DOC/scripts/verify_public_repo.py"
+
+if [ ! -f "$VERIFIER" ]; then
+    echo "pre-commit: verificatore non trovato in $VERIFIER" >&2
+    echo "  imposta LETTERDOC_HOME al percorso di lettore-doc, oppure usa" >&2
+    echo "  --no-verify se stai committando su una macchina senza la pipeline." >&2
+    exit 1
+fi
+
+if [ -x "$VENV_PY" ]; then
+    PY="$VENV_PY"
+else
+    PY="python"
+fi
+
+echo "pre-commit: verifica di riservatezza sul contenuto in stage..."
+if ! "$PY" "$VERIFIER" --staged --skills-repo "$(pwd)"; then
+    echo "" >&2
+    echo "COMMIT BLOCCATO: il verificatore ha trovato contenuto sensibile." >&2
+    echo "Non aggirare con --no-verify senza aver capito ogni riscontro." >&2
+    echo "Le sezioni delle evidenze si correggono con export_to_taxonomy.py," >&2
+    echo "mai a mano: vedi RUNBOOK-BONIFICA-REPO-PUBBLICO.md." >&2
+    exit 1
+fi
