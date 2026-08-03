@@ -6,13 +6,38 @@ covers-paths:
   - scripts/enrich_graph.py
   - scripts/export_to_taxonomy.py
   - scripts/sanitize_taxonomy_diff.py
+  - scripts/extract_entities.py
+  - scripts/verify_public_repo.py
+  - scripts/hooks/**
   - .gitignore
   - .graphifyignore
-last-verified-commit: 382f99e
+last-verified-commit: aa801fa
 source-doc: GUIDA-TECNICA.md
 ---
 
 # Design e sicurezza
+
+## I segreti, e l'incidente che ha creato questa sezione
+
+Il 2026-08-03 un audit del repository pubblico ha trovato **quattro password in chiaro** pubblicate dentro il testo di anteprima delle evidenze, su quattro pagine, presenti in tutti i ventidue commit e servite dal sito e da `raw.githubusercontent.com`. Una era di root su SSH. Nessuno dei quattro strati di difesa poteva vederle: la mappa di anonimizzazione non modella le credenziali perche' non sono entita' nominate, il gate non aveva alcuna categoria per i segreti, il filtro sui nomi di file di graphify guarda il nome e mai il contenuto ed e' per di piu' aggirato di proposito da `prepare_graphify_source.py`, e la ricerca manuale nel diff dipende dal sapere cosa cercare. Le due lezioni sono che un filtro sui nomi non e' un filtro sui contenuti, quindi chi costruisce uno strumento per aggirarne uno deve rimpiazzarlo con un controllo sul contenuto, e che un controllo che vive nella memoria di chi lavora non e' un controllo, perche' smette di funzionare senza produrre segnale.
+
+`SECRET_PATTERNS` in `sanitize_taxonomy_diff.py` e' la categoria nuova, e ha un trattamento diverso da ogni altro residuo: **scarta** l'evidenza anche quando il segreto e' nel preview, dove tutti gli altri residui vengono soltanto scrubati. La ragione e' che un residuo e' un dato scappato dentro un testo utile, mentre una credenziale in chiaro dice che quel punto del documento e' un deposito di credenziali, e mascherare il valore lascerebbe pubblicato a quale sistema e a quale utenza appartiene. Tre regole: l'assegnazione con separatore, dove il valore deve avere la forma di una credenziale (vincolo di lunghezza espresso con un lookahead, non contando i caratteri attorno al simbolo, perche' quella forma mancava i valori con le cifre in fondo); la forma senza separatore, da cui e' esclusa la congiunzione `e` perche' in italiano e' ovunque; e la scheda di credenziali, cioe' la parola credenziali accostata a un identificativo di utenza, per il caso in cui il valore sta oltre i trecento caratteri del preview ma il blocco e' comunque un registro di accessi.
+
+`gate_dropped_nodes` e' l'aggiunta piu' facile da non vedere e la piu' importante. Il gate dichiara nel diff sanitizzato le chiavi dei nodi che ha scartato, e la passata di rimozione dell'export le tratta come conosciute e non piu' attese. Senza di essa un'evidenza scartata sparisce dal diff, quindi la rimozione non la vede nemmeno come nodo conosciuto e il blocco gia' pubblicato resta orfano per sempre: il gate poteva impedire una pubblicazione nuova ma non annullarne una vecchia, ed e' cosi' che le quattro password sarebbero rimaste sul sito anche dopo la regola che le riconosce. Una difesa che non sa disfare cio' che ha lasciato passare prima di esistere e' una difesa a meta'.
+
+`scripts/verify_public_repo.py` e' il quinto strato, e trasforma il controllo manuale in uno eseguibile con un codice di uscita. Importa `LEAK_PATTERNS` e `SECRET_PATTERNS` dal gate invece di duplicarli, perche' un verificatore con una copia propria delle regole diverge al primo aggiornamento e dichiara pulito cio' che il gate impedisce, o viceversa. Le sole categorie che costruisce da se' sono i nomi di persona, derivati dalle mappe dei corpora lavorati in locale, e due pattern strutturali. Ha una modalita' `--history` che analizza ogni commit e una `--staged` adatta a un hook. Su di esso poggia `scripts/hooks/pre-commit`, installato nel repository pubblico da `scripts/install_hooks.ps1`: la sorgente e' versionata qui perche' la cartella degli hook non appartiene a nessun repository e su una macchina nuova non esisterebbe.
+
+Un principio che ha guidato l'affinamento di tutte queste regole: un verificatore che segnala sempre qualcosa insegna a ignorarlo, quindi ogni falso positivo va tolto con la stessa cura dedicata ai veri positivi. La prima stesura ne produceva sulla parola `WINDOWS` scritta maiuscola, sul costo in token stampato da un report di graphify, sul permesso `token: write` di un workflow e sull'identita' dichiarata del proprietario del profilo.
+
+## Nomi di persona in forma parziale
+
+La mappa sostituisce per stringa esatta, quindi copre `Nome Cognome` ma non il cognome nudo, e non copre i nomi di battesimo singoli, che `extract_entities.py` scarta di proposito perche' un token isolato e' troppo ambiguo per essere mascherato a monte. Nei documenti reali le persone si citano in forma parziale, e da quando il preview e' ancorato al nodo il testo pubblicato e' esattamente il tipo di frase in cui i colleghi si nominano per nome.
+
+Due regole chiudono il caso. `residue-person-token` deriva i token dalle voci di mappa che sono nomi propri puliti, cioe' esattamente due parole alfabetiche con iniziale maiuscola, cosi' non serve versionare nomi di colleghi in un repository per proteggerli, che sarebbe una contraddizione. Il criterio stretto sulle due parole non e' un dettaglio: senza di esso entrano le voci sporche prodotte da uno span troppo largo del riconoscitore, e i loro token comuni fanno scartare testo buono. `residue-operator-term` accetta termini sulla riga di comando via `--extra-residue-terms`, per i nomi che nel corpus compaiono solo in forma singola e non hanno token da cui derivare: li individua la revisione manuale del diff, che e' comunque obbligatoria, e restano fuori da git.
+
+## Fornitori: il nome passa, il sottodominio no
+
+Le pagine dichiarano a mano i provider di hosting per nome nella sezione delle tecnologie, mentre il gate trattava gli stessi nomi come sensibili: lo stesso nome era curriculum in una sezione e segreto in quella accanto, la stessa incoerenza risolta a luglio per la ragione sociale. Dal 2026-08-03 la distinzione separa il nome, che dice con chi si lavora, dall'identificativo di una macchina presso quel fornitore, che dice come si e' fatti dentro. `PROVIDER_DOMAINS` elenca i domini dei provider, il dominio nudo e' permesso e `PROVIDER_SUBDOMAIN_RE` blocca qualunque sottodominio, senza ammettere eccezioni per suffisso come fa invece l'allowlist dei domini di terzi. Le tre regole per nome su Fastnet, Vianova e Punto Informatica sono state rimosse, e il codice indica come reintrodurle.
 
 ## Confine di sicurezza fisico
 

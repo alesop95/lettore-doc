@@ -2,6 +2,28 @@
 
 > Append-only, ordine cronologico inverso.
 
+## 2026-08-03 — Quattro password pubblicate: audit, cinque strati nuovi, bonifica e ricreazione del repo (`aa801fa` + skills-repo ricreato)
+
+Sessione nata come normale ciclo di ingest su `Helpdesk_RWS-Groupshare-Studio`, diventata la gestione dell'incidente peggiore del progetto. Racconto completo nel diario C.16.
+
+**Il ritrovamento.** Audit su albero di lavoro e tutti i 22 commit del repo pubblico, 15 categorie, lista di nomi derivata dalle `anonymization_map` locali: **quattro password in chiaro** nei preview delle evidenze su quattro pagine, piu' i codici di backup di un secondo fattore. Una di root su SSH. Presenti in ogni commit e servite anche da `raw.githubusercontent.com` (misurati 11070 e 4250 byte serviti). Trovate inoltre tre fughe minori: hostname con nome di persona (`PC-GIGI`), tre nomi propri di colleghi, un cliente terzo (`SAB Aerospace`), tre sottodomini di provider, e due preview diventati vere intestazioni H2.
+
+**Perche' nessuno strato le vedeva.** Il gate non aveva alcuna categoria per i segreti; la mappa non li modella perche' non sono entita' nominate; il filtro sui nomi di file di graphify guarda il nome e mai il contenuto ed e' aggirato di proposito da `prepare_graphify_source.py`; la ricerca manuale nel diff dipende dal sapere cosa cercare. Le due lezioni: un filtro sui nomi non e' un filtro sui contenuti, e un controllo che vive nella memoria di chi lavora non e' un controllo.
+
+**Cinque strati aggiunti.** (a) `SECRET_PATTERNS` che **scarta** invece di scrubare, con tre regole (assegnazione con valore di forma credenziale, forma senza separatore esclusa la congiunzione `e`, scheda di credenziali per il caso in cui il valore sta oltre i 300 caratteri del preview). (b) `gate_dropped_nodes`: il gate dichiara cosa ha scartato e l'export lo tratta come conosciuto e non piu' atteso, senza cui una regola nuova impedisce una pubblicazione futura ma non annulla una vecchia. (c) `neutralize_markdown` piu' `--repair-structure`, per il preview che diventa intestazione e rompe i confini dei blocchi. (d) `residue-person-token` derivata dalla mappa piu' `--extra-residue-terms` per i nomi in forma singola, senza versionare nomi di colleghi. (e) `verify_public_repo.py` con hook di `pre-commit` versionato in `scripts/hooks/` e installatore.
+
+**Politica fornitori resa coerente.** Il nome del provider passa (le pagine lo dichiarano a mano nelle tecnologie), qualunque sottodominio no. Rimosse le tre regole per nome; aggiunto `PROVIDER_SUBDOMAIN_RE`.
+
+**Bonifica.** Cinque cicli rigenerati con le regole nuove, 224 evidenze riscritte, 15 collocamenti obsoleti rimossi, 2 pagine riparate, verificatore da 17 riscontri a 0, senza un solo intervento a mano sulle sezioni delle evidenze.
+
+**Storia.** Riscritta con commit unico su ramo orfano e push forzato; poi la misura ha mostrato che 5 vecchi commit rispondevano ancora `200` sull'API e `raw` serviva ancora i file: **il push forzato sposta un riferimento, non cancella oggetti**. Con 0 fork e 0 stelle si e' scelto di cancellare e ricreare il repository, che elimina gli oggetti e porta via artifact e log delle esecuzioni. Verificato dopo: commit nuovo `200`, vecchi `422`, `raw` `404`, sito servito pulito su sei pagine.
+
+**Due errori commessi e corretti in corsa.** La riconfigurazione di `soft/index.md` a 90 keyword rubava evidenze tecniche sui due corpora non misurati (funzioni PowerShell sulla pagina delle soft skill): ora in `MANUAL_ONLY_FILES`, e la regola di metodo diventa "su tutti i corpora disponibili, non su un campione". E la prima stesura di `repair_section` cancello' contenuto scritto a mano (due voci di progetto e una sezione `## Capability gaps acknowledged`): ripristinato con `git checkout` e criterio ristretto alla sola intestazione che e' prosa narrativa.
+
+**Inciampo sul deploy.** L'abilitazione automatica delle Pages aggiunta al workflow durante la bonifica ha fatto fallire il primo deploy sul repo ricreato: il token non ha i diritti per abilitare Pages dove non e' mai stato attivo. Rimossa, Pages abilitato a mano una volta, workflow verde.
+
+**Aperto e non tecnico:** la rotazione delle quattro credenziali, unica rimediazione dell'esposizione passata. **Aperto sul progetto:** il ciclo RWS fermo al gate con 38 evidenze e 14 fit da verificare; nuova voce di roadmap sulla tassonomia in tre lingue.
+
 ## 2026-07-29 — Via di rimozione, gate domini di terzi, resnapshot, Soft Skills a contratto (`382f99e` + skills-repo `cfeada5`)
 
 Chiuse le prime quattro voci della coda di lavoro lasciata dal `RESUME_PROMPT.md`. Il filo non previsto: tre volte su quattro la misura sui corpora reali ha corretto la soluzione che sembrava giusta a ragionamento.

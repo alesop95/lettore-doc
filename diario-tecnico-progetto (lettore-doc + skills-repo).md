@@ -1296,6 +1296,76 @@ Quattro voci di coda chiuse, tre script modificati nel motore privato e due file
 
 La lezione di questa sessione è metodologica e vale oltre i quattro casi. Tre volte su quattro la soluzione corretta a ragionamento era sbagliata alla misura: la regola sui domini passava il test sintetico e scartava tre tecnologie dichiarate, la correzione delle esclusioni spostava il rumore invece di toglierlo, e la diagnosi della pagina senza parole chiave puntava sul parsing quando il difetto era editoriale. Il costo della misura è stato ogni volta di pochi minuti, perché i corpora già lavorati sono su disco e gli stati intermedi sono file ispezionabili: è il rendimento di quella scelta architetturale, non un merito della sessione. La regola operativa che ne segue è che una modifica al gate di riservatezza o alla classificazione non si considera fatta finché non è stata rilanciata sui corpora storici e confrontata con l'esito precedente.
 
+## C.16 Quattro password sul sito pubblico: l'audit, la bonifica, e il controllo che non esisteva (2026-08-03)
+
+Questa sezione racconta l'incidente peggiore della storia del progetto, trovato mentre si apriva un normale ciclo di ingest. Il sistema pubblicava da mesi quattro credenziali in chiaro, fra cui una di root su SSH, e nessuno dei quattro strati di difesa poteva vederle, perche' nessuno dei quattro le cercava.
+
+### Come si e' arrivati a guardare
+
+Il ciclo scelto era la subfolder di documentazione su Trados e GroupShare, quattordici documenti selezionati a mano. L'arricchimento ha subito mostrato un corpus molto piu' denso di dati personali dei precedenti, con sedici persone, sedici indirizzi di rete, dieci hostname e quattro indirizzi di posta, fra cui quello di un dipendente del fornitore.
+
+La misura della regola sui domini di terzi, scritta il giorno prima, ha corretto se stessa: sul nuovo corpus scartava quattro portali del vendore del prodotto che l'intero corpus documenta, quindi sono finiti in allowlist. Anche la mappa di anonimizzazione ha rivelato tre falsi positivi del riconoscitore, che classificava come nomi di persona le etichette di interfaccia in maiuscolo iniziale, fra cui read only, che in un documento sui diritti su un termbase e' il concetto centrale.
+
+Poi la scansione di controllo prima dell'export ha dato un allarme, e l'allarme era sbagliato: avevo cercato le stringhe sensibili nel diff sanitizzato, che per costruzione non e' anonimizzato, perche' la mappa la applica l'export. Rifatta la scansione su cio' che l'export avrebbe davvero scritto, indirizzi, posta, dominio e hostname risultavano tutti mascherati correttamente. Restavano pero' cinque nomi di persona, ed era vero.
+
+### La fuga vera: i nomi in forma parziale
+
+La mappa sostituisce per stringa esatta, quindi copre Nome Cognome ma non il cognome scritto da solo, e non copre affatto i nomi di battesimo singoli, che l'estrazione scarta di proposito perche' un token isolato e' troppo ambiguo per essere mascherato a monte. Nei documenti reali le persone si citano quasi sempre in forma parziale, e da quando il preview e' ancorato al nodo il testo pubblicato e' contenuto preso dal centro dei documenti, cioe' esattamente il tipo di frase dove i colleghi si nominano per nome.
+
+La chiusura e' su due livelli. Una regola derivata dai dati, che prende i token delle voci di mappa che sono nomi propri puliti, cioe' esattamente due parole alfabetiche con iniziale maiuscola, e li tratta come residui: cosi' non serve versionare nomi di colleghi in un repository per proteggerli, che sarebbe una contraddizione. E una regola sui termini passati sulla riga di comando, per i nomi che nel corpus compaiono solo in forma singola e non hanno quindi token da cui derivare: li individua la revisione manuale del diff, che e' comunque obbligatoria, e restano fuori da git.
+
+Il criterio stretto sulle due parole non e' un dettaglio. Senza di esso entrano le voci sporche prodotte da uno span troppo largo del riconoscitore, e i loro token comuni fanno scartare testo buono: la stessa lista, costruita senza filtro per l'audit, cercava with e these dentro le licenze dei pacchetti.
+
+### Il ritrovamento
+
+A quel punto l'audit e' stato esteso all'intero repository pubblico, albero di lavoro e tutti i ventidue commit, con quindici categorie. Il risultato peggiore e' arrivato da una categoria che non esisteva prima di quel momento: quattro password in chiaro, dentro il testo di anteprima delle evidenze, su quattro pagine diverse, piu' i codici di backup di un secondo fattore. Una era la password di root per una connessione SSH, una di una casella di posta, una del file che custodisce le credenziali del NAS, una di un account applicativo.
+
+Erano in ogni commit da quando quelle evidenze erano state iniettate, e venivano servite dal sito pubblico e da raw.githubusercontent.com. Il conteggio dei byte serviti, misurato durante l'audit, era di undicimila e di quattromiladuecento.
+
+### Perche' nessuno strato le vedeva
+
+Il gate copriva indirizzi di rete, indirizzi di posta, hostname, dominio aziendale, fornitori e sedi fisiche, e non aveva nessuna categoria per i segreti. La mappa di anonimizzazione non li modella, perche' una credenziale non e' un'entita' nominata. Il filtro di graphify che scarta i file dal nome sospetto guarda il nome e mai il contenuto, ed e' per di piu' aggirato di proposito da prepare_graphify_source.py, che esiste appunto per recuperare le policy IT scartate a torto per il loro titolo. Il quarto strato, la ricerca manuale delle stringhe sensibili nel diff prima del commit, e' quello che in passato aveva trovato la sola fuga vera del progetto, ma dipende dal sapere cosa cercare, e nessuno aveva mai cercato una password.
+
+Le due lezioni sono queste, e sono costate care. Il filtro sui nomi non e' un filtro sui contenuti: se si costruisce uno strumento per aggirare un filtro sui nomi, quello che si aggira va rimpiazzato da un controllo sul contenuto, non lasciato scoperto. E un controllo che vive nella memoria di chi lavora non e' un controllo: funziona finche' qualcuno si ricorda di eseguirlo e sa cosa cercare, e smette di funzionare in silenzio, senza produrre alcun segnale di non aver funzionato.
+
+### Gli strati aggiunti
+
+Il primo e' una categoria di pattern per i segreti che scarta l'evidenza invece di mascherarla. La distinzione dagli altri residui e' voluta: un residuo e' un dato scappato dentro un testo altrimenti utile, mentre una credenziale in chiaro dice che quel punto del documento e' un deposito di credenziali, e mascherare il valore lascerebbe pubblicato a quale sistema e a quale utenza appartiene. Il pattern chiede che il valore abbia la forma di una credenziale, con un vincolo di lunghezza espresso da un lookahead invece che contando i caratteri attorno al simbolo, perche' quella prima forma dipendeva da dove cadeva la cifra e mancava i valori con le cifre in fondo. Le forme senza separatore hanno una regola propria, da cui e' esclusa la congiunzione e, che in italiano compare in ogni frase e faceva scartare la descrizione di una policy di complessita' come se fosse una password. E una regola distinta riconosce la scheda di credenziali, cioe' la parola credenziali accostata a un identificativo di utenza, per il caso in cui il valore sta oltre i trecento caratteri del preview ma il blocco e' comunque un registro di accessi.
+
+Il secondo e' la dichiarazione, da parte del gate, dei nodi che ha scartato. E' l'aggiunta piu' importante e la piu' facile da non vedere. Un'evidenza scartata sparisce dal diff, quindi la passata di rimozione dell'export non la vede nemmeno come nodo conosciuto, e il blocco gia' pubblicato resta orfano per sempre: senza questa riga il gate poteva impedire una pubblicazione nuova ma non annullarne una vecchia, ed e' cosi' che le quattro password sarebbero rimaste sul sito anche dopo aver scritto la regola che le riconosce. Una difesa che non sa disfare cio' che ha lasciato passare prima di esistere e' una difesa a meta'.
+
+Il terzo e' la neutralizzazione dei marcatori Markdown nel preview. Un preview che cominciava con dei cancelletti, appiattito su una riga sola, diventava una vera intestazione dentro la sezione delle evidenze, e siccome le intestazioni sono i confini su cui la delimitazione dei blocchi si appoggia, la riscrittura successiva si fermava a quella riga e lasciava in pagina la coda del blocco vecchio, fuori da ogni ancora. Da quel momento nessuna passata poteva piu' toccarla, perche' non era un blocco: non si riscriveva e non si rimuoveva. Serviva quindi anche una riparazione, che e' la sola via prevista per quelle pagine, dato che l'intervento a mano sulle sezioni delle evidenze e' vietato per ragioni giuste.
+
+Il quarto e' verify_public_repo.py, che rende il controllo eseguibile e ripetibile invece di affidarlo al ricordarsi di farlo, con un codice di uscita che lo rende utilizzabile come cancello. Importa i pattern dal gate invece di duplicarli, perche' un verificatore con una propria copia delle regole diverge al primo aggiornamento e a quel punto dichiara pulito qualcosa che il gate impedisce, o viceversa. La sola categoria che costruisce da se' sono i nomi di persona, che deriva dalle mappe dei corpora lavorati in locale. Su di esso poggia un hook di pre-commit nel repository pubblico, la cui sorgente e' versionata nel progetto e non soltanto installata, perche' la cartella degli hook non appartiene a nessun repository e su una macchina nuova non esisterebbe.
+
+Un principio operativo ha guidato l'affinamento di tutte queste regole: un verificatore che segnala sempre qualcosa insegna a ignorarlo. Ogni falso positivo trovato e' stato tolto con la stessa cura dedicata ai veri positivi, e la prima stesura ne produceva su quattro pagine per la parola Windows scritta in maiuscolo, sul costo in token stampato da un report, sul permesso token: write di un workflow e sull'identita' dichiarata del proprietario del profilo.
+
+### Due errori commessi durante la bonifica
+
+Il primo. Portare la pagina delle competenze trasversali al contratto delle quattro intestazioni le aveva dato novanta parole chiave, le piu' numerose della tassonomia, e la misura su due corpora diceva zero destinazioni cambiate. Sui due corpora non misurati la pagina ha cominciato a ricevere funzioni PowerShell, perche' con etichette di due token una sola sovrapposizione fa punteggio zero virgola cinque e vince, e la pagina con piu' parole chiave e' quella con piu' probabilita' di sovrapporsi per caso. La misura era stata fatta, ma non su tutto cio' che era disponibile: misurare su un sottoinsieme e' meglio che non misurare, e non equivale a misurare. La pagina e' ora esclusa dalla classificazione automatica con una costante dichiarata, perche' nessun nodo estratto da una procedura IT e' evidenza di una competenza trasversale. Lo zero parole chiave era il comportamento giusto, raggiunto prima per la ragione sbagliata.
+
+Il secondo. La prima stesura della riparazione strutturale trattava come corruzione ogni blocco privo di ancora e ogni intestazione di secondo livello dentro la sezione, e ha cancellato contenuto scritto a mano, due voci di progetto redatte dall'autore e una sezione di dichiarazione dei limiti, tutte risalenti al commit di migrazione iniziale. Ripristinate con un ripristino dell'albero, la regola e' stata ristretta a cio' che porta la firma del difetto, cioe' una intestazione il cui testo e' prosa narrativa invece di un'etichetta. Nella sezione delle evidenze convivono legittimamente le voci iniettate e quelle scritte a mano, e uno strumento che pulisce non ha il diritto di presumere il contrario.
+
+### La politica sui fornitori, resa coerente
+
+Le pagine dichiaravano a mano i provider di hosting per nome nella sezione delle tecnologie, mentre il gate trattava gli stessi nomi come dati sensibili e scartava le evidenze che li nominavano: lo stesso nome era curriculum in una sezione e segreto in quella accanto. E' la medesima incoerenza risolta a luglio per la ragione sociale. La distinzione adottata separa il nome, che dice con chi si lavora, dall'identificativo di una macchina presso quel fornitore, che dice come si e' fatti dentro. Il dominio nudo passa, qualunque sottodominio no, e le tre regole per nome sono state rimosse lasciando nel codice l'indicazione di come reintrodurle.
+
+### La bonifica, e cosa il push forzato non fa
+
+L'albero di lavoro e' stato bonificato interamente dalla pipeline, senza un solo intervento a mano sulle sezioni delle evidenze: cinque cicli rigenerati con le regole nuove, duecentoventiquattro evidenze riscritte, quindici collocamenti obsoleti rimossi, due pagine riparate, e il verificatore passato da diciassette riscontri a zero.
+
+La storia e' stata riscritta con un commit unico su un ramo orfano e un push forzato. Poi la misura ha smentito l'aspettativa: cinque dei vecchi commit rispondevano ancora 200 sull'API pubblica, e raw.githubusercontent.com serviva ancora il contenuto dei due file con le password. Il push forzato sposta un riferimento, non cancella oggetti. Con zero fork e zero stelle la strada completa e immediata era cancellare e ricreare il repository, che elimina davvero gli oggetti e porta via con se' anche gli artifact e i log delle esecuzioni passate, dove il sito costruito conteneva le stesse pagine.
+
+Ogni verifica e' stata fatta con un controllo di validita' accanto, e serviva: un primo test dichiarava i vecchi commit irraggiungibili, ma dava lo stesso esito sul commit nuovo, quindi non misurava niente. Dopo la ricreazione, con il commit attuale che risponde 200, i vecchi rispondono 422, che su quell'endpoint e' la risposta per uno SHA[^26] assente, e il contenuto su raw risponde 404.
+
+Un ultimo inciampo, e la sua morale. Per non far dipendere il deploy da un passo manuale avevo aggiunto al workflow l'abilitazione automatica delle Pages, e il primo deploy sul repository ricreato e' fallito proprio su quel passo, perche' il token del workflow non ha i diritti per abilitare Pages dove non e' mai stato attivo. Rimosso il passo, il workflow e' tornato ai cinque che funzionavano da mesi e il sito e' ripubblicato. Un miglioramento introdotto durante un intervento di emergenza va misurato come tutto il resto, e la scelta prudente e' tornare alla configurazione nota.
+
+### Chiusura
+
+Sito ripubblicato e verificato pulito sulle pagine servite, repository con un solo commit, albero e storia puliti secondo il verificatore, cancello di pre-commit installato e provato in entrambe le direzioni. Il ciclo di ingest che aveva fatto partire tutto questo e' rimasto fermo al gate, con trentotto evidenze pronte e quattordici fit marcati da verificare.
+
+Resta una cosa che nessun passo tecnico di questa giornata ha risolto, e va scritta qui perche' e' la conclusione piu' importante: quelle quattro credenziali sono state servite pubblicamente per mesi, quindi vanno considerate note, e la sola rimediazione reale e' la loro rotazione. Rimuovere un segreto da un repository pubblico ferma l'esposizione futura e non tocca quella passata. Un sistema che pubblica deve percio' avere un controllo sui segreti prima del primo commit, non dopo il primo incidente: e' il tipo di difesa il cui valore si misura solo in cio' che non e' mai accaduto.
+
 # Lezioni apprese
 
 Prima di costruire qualcosa di nuovo, vale sempre la pena verificare se la funzionalita' necessaria esiste gia' nel codice esistente. Il piano a quattro script sarebbe risultato in meno di duecento righe di codice che replicavano una versione notevolmente piu' povera di cio' che parse_docx.py e extract_entities.py gia' facevano. Il tempo investito nell'analisi del sistema esistente prima di progettare il nuovo ha eliminato mesi di lavoro ridondante.
@@ -1363,4 +1433,6 @@ Qualsiasi script che scrive in un repository deve essere idempotente. Il meccani
 [^24]: PSK, Pre-Shared Key - chiave condivisa in anticipo fra due estremi di un tunnel VPN, che compare in chiaro nei file di configurazione dei firewall.
 
 [^25]: TLD, Top Level Domain - il suffisso finale di un nome di dominio, per esempio com oppure it, che ne determina il registro di appartenenza.
+
+[^26]: SHA, Secure Hash Algorithm - la funzione di hash con cui git identifica ogni oggetto del repository; l'identificativo di un commit e' il suo digest, e un oggetto resta recuperabile per digest anche quando nessun ramo lo raggiunge piu'.
 
