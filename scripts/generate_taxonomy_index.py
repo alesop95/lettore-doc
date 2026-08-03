@@ -138,6 +138,24 @@ def _interleave_dedup(*token_lists: list[str]) -> list[str]:
     return merged
 
 
+# Capability che non partecipano alla classificazione automatica, indicate per
+# path relativo dentro docs/. Non e' un ripiego: sono pagine la cui evidenza non
+# sta nei documenti aziendali. `soft/index.md` descrive competenze trasversali
+# fondate su ruoli e percorsi personali, e nessun nodo estratto da una procedura
+# IT ne e' evidenza.
+#
+# La storia di questa costante e' istruttiva. La pagina usciva a zero parole
+# chiave per un difetto, cioe' non aveva le quattro intestazioni di contratto;
+# portarla a contratto le ha dato novanta parole chiave, le piu' numerose della
+# tassonomia, e la misura su due corpora diceva zero destinazioni cambiate. Sui
+# due corpora non misurati la pagina ha invece cominciato a ricevere funzioni
+# PowerShell, perche' con etichette di due token una sola sovrapposizione fa
+# punteggio 0.5 e vince, e la pagina con piu' parole chiave e' quella con piu'
+# probabilita' di sovrapporsi per caso. Lo zero era quindi il comportamento
+# giusto raggiunto per la ragione sbagliata: qui diventa una scelta dichiarata.
+MANUAL_ONLY_FILES = {"soft/index.md"}
+
+
 def extract_capability_keywords(md_path: Path) -> tuple[list[str], str, int]:
     """
     Legge un .md di Capability e restituisce:
@@ -189,7 +207,11 @@ def _build_domain(domain_name: str, leaves: list[tuple[str, str]], docs_dir: Pat
     for cap_name, cap_file in leaves:
         slug = Path(cap_file).stem
         md_path = docs_dir / cap_file
-        keywords, overview_excerpt, dropped = extract_capability_keywords(md_path)
+        manual_only = Path(cap_file).as_posix() in MANUAL_ONLY_FILES
+        if manual_only:
+            keywords, overview_excerpt, dropped = [], "", 0
+        else:
+            keywords, overview_excerpt, dropped = extract_capability_keywords(md_path)
         capabilities.append({
             "name":             cap_name,
             "slug":             slug,
@@ -197,6 +219,7 @@ def _build_domain(domain_name: str, leaves: list[tuple[str, str]], docs_dir: Pat
             "keywords":         keywords,
             "overview_excerpt": overview_excerpt,
             "keywords_dropped": dropped,
+            "manual_only":      manual_only,
         })
     # dir = cartella parent della prima capability, in stile POSIX per coerenza cross-OS
     domain_dir = ""

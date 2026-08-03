@@ -56,6 +56,16 @@ PLACEHOLDER_TEXT = (
 )
 PROJECTS_SECTION_HEADER = "## Projects & evidence"
 
+# Le quattro intestazioni di contratto delle pagine Capability. Servono a
+# distinguere una H2 legittima da una H2 spuria finita in pagina per un difetto:
+# la prima chiude la sezione delle evidenze, la seconda va rimossa.
+CONTRACT_HEADINGS = {
+    "## Overview",
+    "## Technologies & tools",
+    "## Responsibilities & operational scope",
+    PROJECTS_SECTION_HEADER,
+}
+
 
 # ---------------------------------------------------------------------------
 # Generazione ID stabile per idempotenza
@@ -99,6 +109,32 @@ def apply_anon(text: str, anon_map: dict | None) -> str:
     return text
 
 
+HEADING_PREFIX_RE = re.compile(r"^\s*#{1,6}\s+")
+INLINE_HEADING_RE = re.compile(r"(?<=\s)#{1,6}(?=\s)")
+
+
+def neutralize_markdown(body: str) -> str:
+    """
+    Toglie dal testo di anteprima i marcatori che, una volta appiattito su una
+    riga sola, il renderer interpreterebbe come struttura del documento.
+
+    Il preview arriva da documenti Markdown e contiene quindi le loro
+    intestazioni. Appiattendo i ritorni a capo in spazi, un preview che
+    cominciava con `## Titolo` diventa una riga che comincia con `## `, e quella
+    riga e' a tutti gli effetti una intestazione di secondo livello iniettata
+    dentro la sezione delle evidenze. Il danno non e' estetico: le intestazioni
+    sono i confini su cui `block_span` e `inject_into_section` delimitano i
+    blocchi e su cui poggia il contratto delle quattro H2, quindi una intestazione
+    spuria sposta quei confini e, nel caso visto sul campo, ha portato una frase
+    di lavoro dentro un titolo di pagina. Si toglie il prefisso e si neutralizzano
+    anche i cancelletti interni, che dopo l'appiattimento si trovano a inizio di
+    cio' che era una riga successiva.
+    """
+    out = HEADING_PREFIX_RE.sub("", body)
+    out = INLINE_HEADING_RE.sub("", out)
+    return re.sub(r"\s{2,}", " ", out).strip()
+
+
 # ---------------------------------------------------------------------------
 # Generazione blocco H3 da iniettare
 # ---------------------------------------------------------------------------
@@ -132,7 +168,7 @@ def build_evidence_block(
     )
 
     if preview:
-        body = preview[:300].replace("\n", " ").strip()
+        body = neutralize_markdown(preview[:300].replace("\n", " ").strip())
         if len(preview) > 300:
             body += "…"
         body_block = f"\n{body}\n"
@@ -226,6 +262,104 @@ def remove_block(md_text: str, sid: str) -> str | None:
     if not tail.strip():
         return head.rstrip() + "\n"
     return head + tail
+
+
+PROSE_HEADING_RE = re.compile(
+    r"\b(?:In data\s+\d|Please complete|si e' scritto|e' stato creato|"
+    r"In alternativa dal|manda una mail|ci sono dei codici)",
+    re.IGNORECASE,
+)
+
+
+def is_prose_heading(line: str) -> bool:
+    """
+    Dice se una riga di intestazione e' in realta' prosa, cioe' la firma di un
+    preview appiattito e iniettato come titolo.
+
+    Il criterio e' la presenza di marcatori narrativi, non la lunghezza: le
+    etichette legittime delle evidenze possono essere lunghe, e un criterio
+    dimensionale cancellerebbe titoli buoni. La lista si allunga se emergono
+    altre forme, e il costo di un marcatore mancante e' che una riparazione va
+    fatta in un giro successivo, mentre il costo di un criterio troppo largo
+    sarebbe cancellare contenuto scritto a mano.
+    """
+    if line.strip() in CONTRACT_HEADINGS:
+        return False
+    return PROSE_HEADING_RE.search(line) is not None
+
+
+def repair_section(md_text: str) -> tuple[str, list[str]]:
+    """
+    Ripulisce la sezione delle evidenze da cio' che non puo' legittimamente
+    starci, restituendo il testo corretto e l'elenco di cosa e' stato rimosso.
+
+    Dentro `## Projects & evidence` il contenuto valido e' una sequenza di
+    blocchi `###`, ciascuno con la propria ancora di identificatore. Tutto il
+    resto e' corruzione, e la corruzione ha una causa nota: un preview il cui
+    testo cominciava con dei cancelletti veniva iniettato come vera intestazione,
+    e siccome le intestazioni sono i confini su cui `block_span` delimita, la
+    riscrittura successiva si fermava a quella riga e lasciava in pagina la coda
+    del blocco vecchio, fuori da ogni ancora. Da quel momento nessuna passata
+    della pipeline poteva piu' toccarla: non e' un blocco, quindi non si riscrive
+    e non si rimuove. Questa funzione e' la sola via prevista per ripararla, e
+    resta preferibile all'intervento a mano, che le regole del progetto vietano
+    proprio perche' quella sezione e' di competenza esclusiva dello script.
+
+    Il criterio di rimozione e' volutamente stretto, e la prima stesura di questa
+    funzione lo aveva sbagliato: dava per corruzione ogni blocco `###` senza
+    ancora e ogni intestazione di secondo livello dentro la sezione, e cosi'
+    cancellava contenuto scritto a mano, cioe' due voci di progetto redatte
+    dall'autore e una sezione `## Capability gaps acknowledged`, tutte risalenti
+    al commit di migrazione iniziale dei contenuti. Da qui la regola attuale: si
+    rimuove solo cio' che porta la firma del difetto, cioe' una intestazione il
+    cui testo e' prosa narrativa invece di un'etichetta, che e' esattamente cio'
+    che produce un preview appiattito. Un blocco senza ancora non si tocca:
+    nella sezione delle evidenze possono legittimamente convivere le voci
+    iniettate dallo script e quelle scritte a mano.
+    """
+    sec_start = md_text.find(PROJECTS_SECTION_HEADER)
+    if sec_start == -1:
+        return md_text, []
+
+    body_start = sec_start + len(PROJECTS_SECTION_HEADER)
+    # La sezione finisce alla prima intestazione di secondo livello che NON sia
+    # prosa: una H2 scritta a mano dopo le evidenze chiude legittimamente la
+    # sezione e va lasciata intatta, mentre una H2 che e' una frase e' il difetto
+    # da riparare e sta dentro la sezione.
+    body_end = len(md_text)
+    search = body_start
+    while True:
+        nxt = md_text.find("\n## ", search)
+        if nxt == -1:
+            break
+        line_end = md_text.find("\n", nxt + 1)
+        line = md_text[nxt + 1:line_end if line_end != -1 else len(md_text)].strip()
+        if not is_prose_heading(line):
+            body_end = nxt + 1
+            break
+        search = nxt + 1
+
+    body = md_text[body_start:body_end]
+    removed: list[str] = []
+
+    # Si spezza il corpo in segmenti che iniziano con una intestazione.
+    parts = re.split(r"(?m)^(?=#{1,6}\s)", body)
+    kept: list[str] = []
+    for part in parts:
+        if not part.strip():
+            continue
+        first_line = part.lstrip("\n").split("\n", 1)[0].strip()
+        level = len(first_line) - len(first_line.lstrip("#"))
+        if level and level <= 2 and is_prose_heading(first_line):
+            removed.append(f"intestazione da preview appiattito: {first_line[:70]}")
+            continue
+        kept.append(part)
+
+    if not removed:
+        return md_text, []
+
+    new_body = "\n\n" + "\n\n".join(p.strip() for p in kept) + "\n" if kept else "\n\n"
+    return md_text[:body_start] + new_body + md_text[body_end:], removed
 
 
 def restore_placeholder_if_empty(md_text: str) -> str:
@@ -338,6 +472,17 @@ def collect_placements(diff: dict) -> tuple[dict[str, set[str]], set[str]]:
 
     for item in diff.get("unclassified", []):
         nk = node_key(item.get("node", {}))
+        if nk:
+            known.add(nk)
+
+    # Nodi che il gate di sanitizzazione ha scartato. Sono conosciuti dal corpus
+    # e non attesi da nessuna parte, quindi rientrano nella rimozione con
+    # --prune-unexpected. Senza questa riga il gate poteva impedire una
+    # pubblicazione nuova ma non annullarne una vecchia, perche' cio' che scarta
+    # sparisce dal diff e diventa invisibile alla ricerca dei collocamenti
+    # obsoleti: e' il caso delle tre password che erano gia' sul sito quando la
+    # regola che le riconosce e' stata scritta.
+    for nk in diff.get("gate_dropped_nodes", []):
         if nk:
             known.add(nk)
 
@@ -535,6 +680,13 @@ def main() -> None:
                              "pubblicati. Senza questo flag una riclassificazione "
                              "duplica l'evidenza su due pagine, perche' l'ID stabile "
                              "dipende dalla pagina e quello vecchio resta orfano.")
+    parser.add_argument("--repair-structure", action="store_true",
+                        help="Ripulisce la sezione delle evidenze dalle "
+                             "intestazioni spurie e dai blocchi senza ancora, "
+                             "che nessuna altra passata puo' toccare perche' non "
+                             "sono blocchi riconoscibili. Serve a riparare le "
+                             "pagine corrotte da un preview iniettato come "
+                             "intestazione.")
     parser.add_argument("--prune-unexpected", action="store_true",
                         help="Rimuove anche i blocchi dei nodi che questo diff conosce "
                              "ma non colloca piu' su nessuna Capability, perche' sono "
@@ -617,6 +769,7 @@ def main() -> None:
             by_cap_file[cap_file].append(item)
 
     injected_count  = 0
+    repaired_count  = 0
     refreshed_count = 0
     skipped_dup     = 0
     missing_files   = 0
@@ -672,6 +825,18 @@ def main() -> None:
             md_text = inject_into_section(md_text, block)
             newly_injected.append(apply_anon(node.get("label", "?"), anon_map))
             injected_count += 1
+
+        if args.repair_structure:
+            md_text, repaired = repair_section(md_text)
+            if repaired:
+                print(f"  {cap_file}: riparata la struttura", file=sys.stderr)
+                for item_desc in repaired:
+                    print(f"      - {item_desc}", file=sys.stderr)
+                repaired_count += len(repaired)
+                if apply_mode and md_text != original_text:
+                    md_path.write_text(md_text, encoding="utf-8",
+                                       newline=original_newline)
+                    original_text = md_text
 
         if newly_injected or refreshed:
             if newly_injected:
@@ -780,6 +945,8 @@ def main() -> None:
           file=sys.stderr)
     if refresh_mode:
         print(f"  Riscritte (refresh):   {refreshed_count}", file=sys.stderr)
+    if repaired_count:
+        print(f"  Riparazioni struttura: {repaired_count}", file=sys.stderr)
     if stale:
         print(f"  Collocamenti obsoleti: {len(stale)}", file=sys.stderr)
         print(f"  Rimozioni {'eseguite' if apply_mode else 'pianificate'}:  {pruned_count}",

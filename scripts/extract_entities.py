@@ -243,6 +243,34 @@ TECH_BRAND_STOPWORDS = {
     "CrowdStrike", "SentinelOne", "Defender", "Trellix", "Cylance",
     "Nessus", "OpenVAS", "Qualys", "Tenable", "Metasploit", "Wireshark",
     "Veeam", "Proxmox", "Zyxel", "Fortigate", "pfSense", "OPNsense",
+    # Ecosistema CAT e traduzione, piu' i verbi e gli aggettivi delle etichette
+    # di interfaccia. Aggiunti dal ciclo Helpdesk RWS GroupShare Studio per la
+    # stessa ragione del blocco qui sopra: il NER italiano applicato a
+    # documentazione software inglese classifica come nome di persona le
+    # etichette in maiuscolo iniziale, e su questo corpus produceva
+    # "Pacchetti Worldserver", "Deactivate Offline" e "read only" fra le
+    # persone da mascherare. Sono i termini che devono restare visibili
+    # nell'evidenza, perche' sono la competenza dichiarata, e nel caso di
+    # "read only" perche' e' il concetto centrale del documento sui diritti.
+    # Il filtro scarta l'intero candidato se un solo token compare qui, quindi
+    # un termine generico come "Manager" o "Project" e' controindicato: uno span
+    # del NER che inglobasse un cognome vero accanto a quella parola verrebbe
+    # scartato in blocco, e il cognome resterebbe non mascherato. Si aggiungono
+    # percio' solo i termini che nessun nome di persona puo' contenere, piu' le
+    # tre etichette di interfaccia che hanno prodotto un falso positivo
+    # osservato su questo corpus.
+    "Trados", "GroupShare", "Groupshare", "MultiTerm", "Multiterm",
+    "Worldserver", "WorldServer", "Passolo", "RWS", "SDL", "Termbase",
+    "Sdlxliff", "SDLXLIFF", "Sdltm", "Xliff", "Tmx",
+    "Deactivate", "Offline", "Read", "Only",
+    # Provider di hosting, registrazione domini e connettivita'. Il NER li
+    # classificava come nomi di persona quando comparivano accanto a una parola
+    # capitalizzata, per esempio "Domini Aruba", e da quella voce di mappa la
+    # regola sui token derivati faceva poi scartare ogni evidenza che nominasse
+    # il provider. Sono nomi di fornitore, che il progetto dal 2026-08-03 tratta
+    # come tecnologia dichiarata e non come segreto: il segreto e' il
+    # sottodominio, e lo ferma il gate.
+    "Aruba", "Seeweb", "Fastnet", "Vianova", "Register", "OVH", "Ionos",
 }
 
 # Versione minuscola per i confronti sui percorsi che producono token gia'
