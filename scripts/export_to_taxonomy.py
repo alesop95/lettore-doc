@@ -77,6 +77,52 @@ def stable_id(node_id: str, cap_slug: str) -> str:
     return hashlib.sha256(raw).hexdigest()[:12]
 
 
+# Suffissi di lingua usati dal plugin i18n del sito pubblico, che adotta la
+# struttura a suffisso: `pagina.md` e' la lingua di default e `pagina.it.md`,
+# `pagina.es.md` sono le traduzioni.
+LOCALE_SUFFIXES = ("it", "es", "en")
+
+
+def base_slug(stem: str) -> str:
+    """
+    Toglie da uno stem l'eventuale suffisso di lingua.
+
+    Serve perche' l'identificativo stabile di un'evidenza contiene lo slug della
+    Capability: se lo si calcolasse dal nome del file su cui si scrive, la stessa
+    evidenza prenderebbe un identificativo diverso in ognuna delle tre lingue, e
+    diventerebbe impossibile riconoscerla, riscriverla o rimuoverla. L'unita' di
+    identita' e' la Capability, non la sua traduzione.
+    """
+    for loc in LOCALE_SUFFIXES:
+        if stem.endswith(f".{loc}"):
+            return stem[: -(len(loc) + 1)]
+    return stem
+
+
+def locale_variants(docs_dir: Path, cap_file: str) -> list[Path]:
+    """
+    Restituisce il file di default di una Capability e le sue traduzioni
+    esistenti, in quest'ordine.
+
+    Le evidenze vanno iniettate in tutte le varianti presenti, perche' con il
+    plugin i18n una pagina tradotta sostituisce integralmente quella di default
+    per la propria lingua: se la traduzione non avesse la sezione delle evidenze,
+    il lavoro documentato si vedrebbe in una lingua sola. Le traduzioni non
+    ancora scritte non compaiono qui e non vanno create: il ripiego del plugin
+    mostra per quelle la pagina di default, evidenze comprese.
+    """
+    default = docs_dir / cap_file
+    if not default.exists():
+        return []
+    out = [default]
+    stem = Path(cap_file).stem
+    for loc in LOCALE_SUFFIXES:
+        variant = default.with_name(f"{stem}.{loc}{default.suffix}")
+        if variant != default and variant.exists():
+            out.append(variant)
+    return out
+
+
 def node_key(node: dict) -> str:
     """
     Identificativo del nodo usato come primo termine dell'ID stabile.
@@ -530,7 +576,10 @@ def find_stale_placements(
         if not anchors:
             continue
 
-        slug     = md_path.stem
+        # Lo slug si prende senza il suffisso di lingua, cosi' un blocco che sta
+        # in una traduzione viene riconosciuto con lo stesso identificativo del
+        # suo omologo nella lingua di default e la rimozione lo raggiunge.
+        slug     = base_slug(md_path.stem)
         rel_file = md_path.relative_to(docs_dir).as_posix()
 
         for nk in known:
@@ -777,7 +826,12 @@ def main() -> None:
     print(f"--- FIT: {len(fit_items)} nodi → {len(by_cap_file)} Capability ---", file=sys.stderr)
 
     for cap_file, items in sorted(by_cap_file.items()):
-        md_path = docs_dir / cap_file
+      variants = locale_variants(docs_dir, cap_file)
+      if not variants:
+          print(f"  ⚠ File non trovato: {docs_dir / cap_file}", file=sys.stderr)
+          missing_files += 1
+          continue
+      for md_path in variants:
         if not md_path.exists():
             print(f"  ⚠ File non trovato: {md_path}", file=sys.stderr)
             missing_files += 1
@@ -790,6 +844,10 @@ def main() -> None:
         original_newline = "\r\n" if b"\r\n" in raw_bytes else "\n"
         md_text = md_path.read_text(encoding="utf-8")
         original_text = md_text
+        rel = md_path.relative_to(docs_dir).as_posix()
+        # Lo slug per l'ID stabile viene dal file di default del diff, non dal
+        # file su cui stiamo scrivendo: le varianti di lingua devono portare lo
+        # stesso identificativo, altrimenti la stessa evidenza ne prende tre.
         cap_slug = Path(cap_file).stem
 
         newly_injected = []
@@ -829,7 +887,7 @@ def main() -> None:
         if args.repair_structure:
             md_text, repaired = repair_section(md_text)
             if repaired:
-                print(f"  {cap_file}: riparata la struttura", file=sys.stderr)
+                print(f"  {rel}: riparata la struttura", file=sys.stderr)
                 for item_desc in repaired:
                     print(f"      - {item_desc}", file=sys.stderr)
                 repaired_count += len(repaired)
@@ -840,11 +898,11 @@ def main() -> None:
 
         if newly_injected or refreshed:
             if newly_injected:
-                print(f"  {cap_file}: +{len(newly_injected)} nodi", file=sys.stderr)
+                print(f"  {rel}: +{len(newly_injected)} nodi", file=sys.stderr)
                 for lbl in newly_injected:
                     print(f"    + {lbl}", file=sys.stderr)
             if refreshed:
-                print(f"  {cap_file}: ~{len(refreshed)} nodi riscritti", file=sys.stderr)
+                print(f"  {rel}: ~{len(refreshed)} nodi riscritti", file=sys.stderr)
 
             if apply_mode and md_text != original_text:
                 md_path.write_text(md_text, encoding="utf-8", newline=original_newline)
