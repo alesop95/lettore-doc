@@ -1,21 +1,14 @@
 # RESUME_PROMPT
 
-> Documento di passaggio scritto il 2026-07-29 alla chiusura di una sessione su
-> `account3`, per riaprire su `account2`. Serve a far ripartire il lavoro senza
-> ricostruire il contesto dalla conversazione precedente.
+> Documento di passaggio riscritto il 2026-08-04 alla chiusura della sessione.
+> Sostituisce integralmente la versione del 2026-07-29, la cui coda di lavoro e'
+> stata chiusa.
 >
-> Lo stato canonico e sintetico resta `.claude/memory/index.md`, e il work-log
-> dettagliato `.claude/memory/progress.md`. Questo file e' il passaggio verboso
-> di una transizione specifica: se lo si legge molto dopo il 2026-07-29, quei due
-> hanno la precedenza.
-
-> Aggiornamento del 2026-07-29, a valle della sessione che ha letto questo file:
-> l'azione pendente e' stata eseguita (`1033bc1`) e i punti 1-4 della coda di
-> lavoro qui sotto sono chiusi in `382f99e` piu' skills-repo `cfeada5`. Resta
-> aperto il solo punto 5, il prossimo ciclo di ingest. Quello che di questo
-> documento conserva valore e' la sezione su cosa e' stato provato e scartato e
-> quella sulle trappole verificate su questa macchina; per lo stato vale
-> `.claude/memory/index.md` e per il dettaglio `.claude/memory/progress.md`.
+> Lo stato canonico e sintetico resta `.claude/memory/index.md`, il work-log
+> dettagliato `.claude/memory/progress.md`, e il racconto delle decisioni il
+> diario, sezioni C.16 e C.17 per questa sessione. Questo file aggiunge cio' che
+> quei tre non contengono: le trappole verificate sulla macchina e il perche' di
+> alcune scelte che a rileggerle sembrano arbitrarie.
 
 ---
 
@@ -23,194 +16,159 @@
 
 Aprire Claude Code nella root del progetto e seguire la procedura ordinaria:
 leggere `.claude/memory/index.md`, poi `.claude/context/current-work.md`, poi
-invocare la skill `sync-context` per il drift schede-codice. Questo file
-aggiunge il contesto che quei tre non contengono, cioe' il perche' delle scelte
-appena fatte e cosa e' stato provato e scartato.
+invocare la skill `sync-context`. Per orientarsi sull'insieme dei flussi c'e'
+`STATO-DEL-PROGETTO.md`, che e' la fotografia da leggere quando si e' perso il
+filo. Per un nuovo ciclo di ingest, il digest e' `.\scripts\session_resume.ps1`.
 
 ---
 
-## Stato esatto al momento della consegna
+## Stato alla consegna
 
 | Cosa | Valore |
 |---|---|
-| `lettore-doc` HEAD | `a0ea49b` |
-| `skills-repo` HEAD | `502efe5` (allineato con origin) |
-| Schede `context/` | frontmatter a `9594d44`, **da bumpare** ad `a0ea49b` |
-| Evidenze pubblicate | 239 ID su 11+ pagine Capability |
-| Ultimo ciclo di ingest | Cybersec endpoint governance, chiuso, skills-repo `5ca2dd6` |
-| Diario | in pari, ultima sezione C.14 |
-
-### Azione pendente immediata
-
-Due schede sono modificate e non committate, perche' il `git add` e' andato a
-capo in PowerShell e le righe successive sono state interpretate come stringhe a
-se'. E' successo due volte in questa sessione: **dare sempre i comandi git su
-riga singola**.
-
-```powershell
-git add scripts/map_to_taxonomy.py .claude/context/dev-testing.md .claude/context/roadmap.md
-git commit -m "Marca i fit a destinazione incerta e ne dichiara il motivo"
-git push
-```
-
-`scripts/map_to_taxonomy.py` e' gia' dentro `a0ea49b`, quindi il comando qui
-sopra committa in pratica le sole due schede; includerlo e' innocuo.
-
-Dopo il commit, bumpare `last-verified-commit` delle sei schede in
-`.claude/context/` al nuovo sha e aggiornare il commit di riferimento in
-`.claude/memory/index.md`.
+| `lettore-doc` | ultimo commit di diario e schede, schede a `fee90a6` |
+| `skills-repo` | `befbee0`, storia di un solo commit dopo la ricreazione |
+| Evidenze pubblicate | 284 ID su 9+ pagine Capability |
+| Ultimo ciclo di ingest | Helpdesk RWS GroupShare Studio, chiuso |
+| Sito pubblico | trilingue, inglese in radice, `/it/` e `/es/` |
+| Diario | in pari, ultima sezione C.17 |
+| Debito aperto | nessuno |
 
 ---
 
-## Cosa e' stato fatto nelle ultime due sessioni
+## Cosa e' successo in questa sessione, in breve
 
-Tre filoni, tutti chiusi.
+Un normale ciclo di ingest si e' trasformato nella gestione di un incidente:
+l'audit del repository pubblico ha trovato **quattro password in chiaro
+pubblicate** nei preview delle evidenze, presenti in tutti i ventidue commit e
+servite anche da `raw.githubusercontent.com`. Il gate non aveva nessuna categoria
+per i segreti. Racconto completo in C.16.
 
-**Ciclo di ingest Cybersec endpoint governance.** Nove documenti selezionati a
-mano da due subfolder del segmento Cybersec, 28 evidenze pubblicate su 2
-Capability. Ha confermato sul campo la correzione del routing GDPR fatta il
-giorno prima (zero evidenze a `Quality Certification`, 5 correzioni manuali su
-28 contro 18 su 34 del ciclo precedente) e ha scoperto una **fuga reale**:
-ragione sociale e hostname uscivano nel repo pubblico attraverso i *nomi dei
-file*, per due strade indipendenti, la riga `- **Source**:` scritta verbatim e il
-frontmatter di tracciabilita' che finiva nel preview del corpo. Chiusa su tre
-livelli. La fuga e' stata vista solo cercando le stringhe sensibili nel
-`git diff` del repo pubblico con l'`--apply` gia' fatto e nulla committato: il
-riepilogo dell'export e il `--numstat` erano entrambi verdi.
+Sono stati aggiunti cinque strati di difesa, l'albero di lavoro e' stato bonificato
+interamente dalla pipeline, e il repository pubblico e' stato cancellato e
+ricreato. Le quattro credenziali sono poi state esaminate una per una con
+l'utente: **nessuna rotazione e' stata necessaria**, perche' riguardavano risorse
+dismesse, una persona non piu' in azienda e un prodotto non piu' in uso. Cio' che
+contava era l'anonimizzazione, verificata su quattro scope con esito zero. Questa
+conclusione e' scritta anche nel work-log, perche' senza di essa una sessione
+futura riaprirebbe il caso.
 
-**Audit del pubblicato e riparazione retroattiva.** Audit su albero di lavoro e
-su tutti i 20 commit della storia del repo pubblico: nessun cognome, email, IP
-interno, hostname, dominio aziendale, fornitore o sede, in nessun commit. La sola
-stringa presente era la ragione sociale nuda, che le pagine dichiarano
-volutamente: rimossa la regola `residue-company-intrawelt` dal gate, con recupero
-di 4 evidenze scartate a torto. L'audit ha invece trovato un difetto di qualita'
-serio, 44 evidenze pubblicate con preview identico, riparate introducendo
-`anchored_preview` (il preview era costruito per file e non per nodo) e la
-modalita' `--refresh` in `export_to_taxonomy.py`, che prima non esisteva:
-l'idempotenza per ID protegge dai duplicati e insieme immobilizzava gli errori.
-
-**Fragilita' del punteggio: misurata e resa visibile, non risolta.** Vedi la
-sezione seguente, che e' la piu' importante da leggere prima di riprovarci.
+Nella stessa sessione il ciclo di ingest e' stato chiuso (38 evidenze su 9
+Capability) e il sito e' diventato trilingue. Dettagli in C.17.
 
 ---
 
-## Cosa e' stato provato e scartato (non ritentare senza motivo nuovo)
+## Le regole nuove, che valgono da adesso
 
-Il problema: `recall_score` e' una sovrapposizione di insiemi fra i token del
-nodo e le keyword della Capability. Con label di tre-sei token il segnale e'
-sottile, e nel ciclo endpoint **otto fit su ventotto avevano margine esattamente
-zero** sul secondo classificato, cioe' la destinazione veniva decisa dall'ordine
-di iterazione del nav di MkDocs.
+**Nessun commit sul repository pubblico senza che `verify_public_repo.py` sia
+uscito pulito.** L'hook di `pre-commit` lo rende non aggirabile per distrazione, e
+si reinstalla con `scripts\install_hooks.ps1` dopo ogni clonazione, perche' la
+cartella degli hook non e' versionata da nessun repository.
 
-**Pesaggio IDF dei token per capacita' discriminante. Scartato.** Implementato e
-misurato contro le sei assegnazioni note come sbagliate: ne correggeva due ma
-rompeva una che era giusta (`Problema connessione RDP LAN`, da Networking
-corretto a Cybersecurity sbagliato) e spostava un'altra da sbagliata a
-diversamente sbagliata. Guadagno netto di uno su sei: non giustifica di toccare
-una funzione di punteggio tarata sul campo. Annullato con `git checkout`.
+**Una modifica al gate o alla classificazione va misurata su tutti i corpora
+disponibili, non su un campione.** Costa poco, perche' i corpora sono su disco
+sotto `_intermediate/src/` e gli stati intermedi sono file JSON. Il confronto si fa
+sulle destinazioni per ID di nodo, non sui totali, perche' due errori che si
+compensano tengono il totale fermo. Questa regola nasce da un errore reale: una
+misura su due corpora su quattro aveva dichiarato innocua una modifica che sugli
+altri due rubava evidenze.
 
-**Ponte bilingue italiano-inglese sui token. Scartato, peggiora.** Una mappa di
-termini IT italiani verso i corrispondenti inglesi porta il nodo `PSGSI Politica
-Sicurezza Informazioni` da non classificato a instradato **con sicurezza sulla
-pagina sbagliata** (`Microsoft 365 Business`, che matcha su `policy` e
-`security`). Un errore confidente e' peggio di un silenzio.
-
-**Conclusione.** Nessun aggiustamento lessicale riduce gli errori su questa
-classe di casi: li sposta. La strada strutturale e' una rappresentazione
-semantica, cioe' la voce sugli embeddings in `roadmap.md`. Chi la riprende
-sappia che le due alternative economiche sono state provate e misurate.
-
-**Cosa e' stato fatto invece.** `map_to_taxonomy.py` marca **DA VERIFICARE** i
-fit in cui la destinazione non e' determinata dal punteggio, con due criteri:
-margine entro `REVIEW_MARGIN` (0.05) sul secondo classificato, oppure decisione
-poggiata su un solo token. Per ciascuno il diff stampa il secondo classificato
-col suo punteggio e i token che hanno deciso. Sul ciclo endpoint: 10 marcati su
-31, e **tutti e cinque** gli errori poi corretti a mano stavano fra quelli.
-Precisione 50%, richiamo 100%. Sui pareggi il secondo classificato e' spesso la
-destinazione giusta, quindi la correzione e' immediata. Non e' una soluzione
-della fragilita': e' una revisione mirata invece che cieca.
+**Un verificatore che segnala sempre qualcosa insegna a ignorarlo.** Ogni falso
+positivo va tolto con la stessa cura dedicata ai veri positivi.
 
 ---
 
-## Coda di lavoro, in ordine di priorita'
+## Coda di lavoro, in ordine
 
-**1. Via di rimozione per un'evidenza pubblicata.** E' il prerequisito di
-qualsiasi riclassificazione retroattiva, e finche' non esiste non si possono
-valutare cambi della funzione di punteggio applicati allo storico. Il problema:
-l'ID stabile e' `sha256(node_id + "::" + cap_slug)[:12]`, quindi se una
-riclassificazione sposta un nodo di pagina l'ID cambia, `--refresh` inietta il
-blocco nuovo sulla pagina giusta ma **non riconosce piu' quello vecchio**, che
-resta orfano. Risultato, evidenza duplicata su due pagine. Si e' visto dal vivo
-in un dry-run: "5 iniezioni pianificate, 25 gia' presenti" su un diff dove i 5
-erano nodi mal instradati con ID nuovo. Serve una passata che, dato il diff
-corrente, trovi gli ID di evidenza presenti nel repo pubblico e non piu' previsti,
-e li rimuova; `replace_block` in `export_to_taxonomy.py` ha gia' la logica di
-delimitazione del blocco da cui partire.
+**1. Traduzione delle pagine Capability.** Il meccanismo trilingue e' completo e
+provato; restano trenta pagine di Capability piu' quella delle competenze
+trasversali. E' lavoro di contenuto e conviene procedere per domini, un blocco per
+sessione, cominciando da Infrastructure e Security. Il ripiego del plugin fa
+restare visibili in inglese le pagine non ancora tradotte, quindi non c'e' fretta e
+non ci sono buchi. Non creare file di traduzione vuoti: il ripiego mostra la pagina
+di default, evidenze comprese.
 
-**2. Domini di terzi nel gate residue.** L'unico punto aperto che riguarda la
-riservatezza e non la qualita'. I pattern in `sanitize_taxonomy_diff.py` coprono
-il dominio aziendale ma non domini esterni arbitrari. Il nodo `Dominio
-sabaerospace.com`, che e' il dominio di un terzo, non e' stato pubblicato perche'
-ha preso punteggio zero, non perche' il gate lo abbia fermato.
+**2. Action di GitHub su Node 24.** Le annotazioni del workflow segnalano che
+Node.js 20 e' deprecato sui runner: `checkout@v4`, `setup-python@v5`,
+`upload-artifact@v4` e `deploy-pages@v4` vanno aggiornati prima che il deploy si
+fermi da solo.
 
-**3. `EXCLUDE_DIR_NAMES` in `ingest_state.py`.** Il digest segnala e continuera' a
-segnalare 996 file nuovi su `Miscellaneous procedure e utilities`, tutti scraping
-di brochure di fondi di terzi sotto `Web scraping - Downloaded Web sites`. Non e'
-materiale da ingerire. Due righe, accanto a `_archive` e `templates`.
-
-**4. Capability `Soft Skills` a zero keyword.** Non puo' ricevere evidenze. Da
-verificare se la pagina abbia le due sezioni H2 da cui
-`generate_taxonomy_index.py` estrae.
-
-**5. Prossimo ciclo di ingest.** Candidate mai ingerite, per dimensione:
-`Helpdesk_T-Rex` (41 doc), `_DA SISTEMARE (Alessio)` (44),
-`Helpdesk_RWS-Groupshare-Studio` (17), un blocco coeso dei piccoli `Helpdesk_*`
-(circa 35 in totale), `TOOL AI coding assistance` (9). Le grandi (`ENIVIPA` 2500,
-`SCENIA` 918, `OpenAI` 267) vanno segmentate per coesione semantica, non prese in
-blocco. Nel segmento Cybersec restano non lavorate `Privacy (GDPR e Contratti)`
-(33), `_VA e Pentest assessment` (12, con report di rischio da escludere),
+**3. Prossimo ciclo di ingest.** Partire da `session_resume.ps1`. Candidate mai
+ingerite: `Helpdesk_T-Rex` (41 doc), `_DA SISTEMARE (Alessio)` (44), un blocco dei
+piccoli `Helpdesk_*` (circa 35 in totale), `TOOL AI coding assistance` (9). Le
+grandi (`ENIVIPA` 2500, `SCENIA` 918, `OpenAI` 267) vanno segmentate per coesione
+semantica. Nel segmento Cybersec restano `Privacy (GDPR e Contratti)` (33),
+`_VA e Pentest assessment` (12, con report di rischio da escludere),
 `_QUESTIONARI FORNITORI` (126, dati di terzi, da escludere) e dieci documenti di
 `_ GDPR E ISO27001`.
+
+**4. Voci minori in `roadmap.md`.** Avviso esplicito per una Capability a zero
+parole chiave, distinguendo il caso dichiarato in `MANUAL_ONLY_FILES` da quello
+accidentale. Ereditarieta' dei token di community in `classify_nodes`. Embeddings
+al posto del punteggio lessicale, che ora ha il suo prerequisito soddisfatto
+perche' esiste la via di rimozione.
 
 ---
 
 ## Trappole verificate su questa macchina
 
-**Comandi git su riga singola.** In PowerShell un `git add` andato a capo fa
-interpretare le righe successive come stringhe a se': e' successo due volte, con
-commit incompleti che sono stati scoperti solo controllando `git status` dopo.
+**Un push forzato sposta un riferimento, non cancella oggetti.** Dopo la
+riscrittura della storia, cinque vecchi commit rispondevano ancora `200` sull'API
+pubblica e `raw.githubusercontent.com` serviva ancora il contenuto. Con zero fork
+la via completa e' cancellare e ricreare il repository, che elimina gli oggetti e
+porta via anche artifact e log delle esecuzioni.
 
-**Mai patchare file esistenti con `write_text` in Python su Windows.** Traduce
-`\n` in `\r\n` e riscrive il file per intero: e' capitato su
-`export_to_taxonomy.py`, che era l'unico script a LF, facendo apparire 504 righe
-cambiate invece di 59. Usare `write_bytes`, o l'editor, o `newline=""`. Tutti gli
-script del progetto sono a LF.
+**Ogni verifica va accompagnata da un controllo di validita'.** Un primo test
+dichiarava i vecchi commit irraggiungibili, ma dava lo stesso esito su un commit
+che esisteva: non misurava niente. Su quell'endpoint `422` significa SHA assente e
+`200` presente, quindi il controllo e' verificare che il commit attuale risponda
+`200`.
 
-**Account per le sessioni graphify.** La skill e' installata su `account1`,
-`account2` e `account3`. Il launcher `scripts/start_graphify.ps1` prende
-`-SourceFolder` (non `-Folder`) e opzionalmente `-Account`; senza `-Account` la
-sessione eredita il default del terminale, ed e' cosi' che il ciclo del 28 luglio
-e' finito su `account1` mentre quello di luglio era su `account2`. **Su `account1`
-il login risultava in scadenza in tre giorni al 2026-07-28**: verificarlo prima
-di aprire un ciclo lungo.
+**`git commit --dry-run` non esegue gli hook**, quindi non serve a provarli. Si
+esegue l'hook a mano con il contenuto in stage.
 
-**`enrich_graph.py` ha ora una cache per file.** Prima rifaceva l'estrazione NER
-una volta per nodo invece di una per file, e su ARCHITETTURA (203 nodi, una
-ventina di documenti) significava minuti. Ora la riesecuzione di quel ciclo e'
-questione di secondi. Se una modifica futura rompe la cache, il sintomo e' un
-enrich che va in background per dieci minuti.
+**Le Pages non si abilitano dal workflow.** `actions/configure-pages` con
+`enablement: true` fallisce perche' il token non ha quei diritti dove Pages non e'
+mai stato attivo. L'abilitazione e' manuale una volta sola, in Settings, Pages,
+Source GitHub Actions.
 
-**Il `--numstat` non e' un controllo di riservatezza**, e in modalita' `--refresh`
-non vale nemmeno la regola "solo aggiunte", perche' le cancellazioni sono
-legittime. I controlli reali sono in `.claude/context/dev-testing.md`: ricerca
-esplicita delle stringhe sensibili nel `git diff` del repo pubblico con l'apply
-fatto e nulla committato, conteggio degli ID di evidenza prima e dopo, e presenza
-delle quattro H2 di contratto in ogni pagina toccata.
+**Uno strumento che ripulisce non ha il diritto di presumere.** La prima stesura
+della riparazione strutturale trattava come corruzione ogni blocco senza ancora e
+cancello' contenuto scritto a mano. Si rimuove solo cio' che porta la firma
+dimostrabile del difetto.
 
-**Un preview migliore amplia la superficie da sanitizzare.** Da quando il preview
-e' ancorato al nodo, il testo pubblicato e' contenuto reale preso dal centro dei
-documenti e i residui arrivano davvero. Ogni miglioramento della qualita' del
-preview va accompagnato da una rilettura dei pattern residue.
+**Comandi git su riga singola**, e con il `cd` esplicito: due errori di questa
+sessione, uno con un `git add` andato a capo in PowerShell e uno con un comando
+lanciato nella cartella sbagliata.
+
+**Mai patchare file esistenti con `write_text` in Python su Windows**: traduce LF
+in CRLF e riscrive tutto. Usare `write_bytes` o l'editor. Tutti gli script del
+progetto sono a LF.
+
+**Account per le sessioni graphify.** `scripts\start_graphify.ps1` prende
+`-SourceFolder` e opzionalmente `-Account`; senza `-Account` la sessione eredita il
+default del terminale.
+
+**Il `--numstat` non e' un controllo di riservatezza**, e in modalita' refresh non
+vale nemmeno la regola "solo aggiunte". I controlli reali sono in
+`.claude/context/dev-testing.md`.
+
+**Un preview migliore amplia la superficie da sanitizzare.** Da quando e' ancorato
+al nodo, il testo pubblicato e' contenuto reale preso dal centro dei documenti.
+
+---
+
+## Note su cosa c'e' su disco
+
+`_intermediate/src/` contiene i corpora dei cicli lavorati e i loro grafi, ed e'
+la base su cui gira la regola di misura: **non va svuotata**. Le tre righe di
+esclusione per-subfolder in `.gitignore` e `.graphifyignore` puntano a cartelle
+staged ora rimosse: sono state lasciate come guardia, perche' se un ciclo futuro
+ricreasse una cartella con lo stesso nome l'esclusione tornerebbe utile.
+
+Per ARCHITETTURA e Miscellaneous la cartella non si puo' potare tenendo solo
+`graphify-out`: tre dei quindici documenti sorgente stanno in una sottocartella
+esterna e servono al ri-arricchimento. Verificato, non ipotizzato.
 
 ---
 
@@ -220,19 +178,26 @@ preview va accompagnato da una rilettura dei pattern residue.
 # digest dello stato ingest
 .\scripts\session_resume.ps1
 
-# pre-flight graphify su una subfolder (passo 0, sola verifica)
+# verifica di riservatezza sul repo pubblico (obbligatoria prima di ogni commit)
+.\.venv\Scripts\python.exe scripts\verify_public_repo.py
+.\.venv\Scripts\python.exe scripts\verify_public_repo.py --history
+
+# installazione degli hook nel repo pubblico
+.\scripts\install_hooks.ps1
+
+# pre-flight graphify (passo 0, sola verifica)
 .\.venv\Scripts\python.exe scripts\prepare_graphify_source.py --folder "_intermediate\src\<nome>"
 
 # sessione graphify
-.\scripts\start_graphify.ps1 -SourceFolder "<path>" -Account account2
+.\scripts\start_graphify.ps1 -SourceFolder "_intermediate\src\<nome>-sanitized" -Account account2
 
 # catena a valle
 .\.venv\Scripts\python.exe scripts\generate_taxonomy_index.py --output _intermediate\taxonomy_index.json
 .\.venv\Scripts\python.exe scripts\enrich_graph.py --graph "<...>\graphify-out\graph.json" --workdir "<...>" --output _intermediate\enriched_graph.json
 .\.venv\Scripts\python.exe scripts\map_to_taxonomy.py --enriched-graph _intermediate\enriched_graph.json --taxonomy _intermediate\taxonomy_index.json --output-md _intermediate\taxonomy_diff.md --output-json _intermediate\taxonomy_diff.json
-.\.venv\Scripts\python.exe scripts\sanitize_taxonomy_diff.py --input _intermediate\taxonomy_diff.json --output _intermediate\taxonomy_diff.sanitized.json
 notepad _intermediate\taxonomy_diff.md   # REVISIONE: partire dai DA VERIFICARE
-.\.venv\Scripts\python.exe scripts\export_to_taxonomy.py --diff-json _intermediate\taxonomy_diff.sanitized.json --skills-repo $env:LETTERDOC_SKILLS_REPO --dry-run
+.\.venv\Scripts\python.exe scripts\sanitize_taxonomy_diff.py --input _intermediate\taxonomy_diff.json --output _intermediate\taxonomy_diff.sanitized.json --extra-residue-terms "<nomi singoli trovati in revisione>"
+.\.venv\Scripts\python.exe scripts\export_to_taxonomy.py --diff-json _intermediate\taxonomy_diff.sanitized.json --skills-repo $env:LETTERDOC_SKILLS_REPO --prune-moved --prune-unexpected --dry-run
 
 # diario: draft in _notes\, poi
 .\.venv\Scripts\python.exe scripts\append_diary_section.py --draft "_notes\<draft>.md"
