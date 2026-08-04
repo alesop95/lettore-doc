@@ -4,7 +4,7 @@ generated-from-branch: main
 generated-date: 2026-06-17
 covers-paths:
   - scripts/**
-last-verified-commit: aa801fa
+last-verified-commit: fee90a6
 source-doc: GUIDA-TECNICA.md
 ---
 
@@ -14,7 +14,11 @@ Stato: sistema maturo (v3.0 post-incidente credenziali). Il 2026-08-03, aprendo 
 
 Chiuso in giornata: cinque strati nuovi (`SECRET_PATTERNS` che scarta invece di scrubare, `gate_dropped_nodes` che rende annullabile una pubblicazione vecchia, `neutralize_markdown` piu' `--repair-structure`, le due regole sui nomi propri parziali, e `verify_public_repo.py` con l'hook di pre-commit); bonifica integrale dell'albero di lavoro via pipeline, da diciassette riscontri a zero; storia riscritta e poi repository cancellato e ricreato, perche' il push forzato non cancella gli oggetti e i vecchi commit rispondevano ancora; sito ripubblicato e verificato pulito. La politica sui fornitori e' resa coerente: il nome passa, il sottodominio no.
 
-Aperto e non tecnico: la rotazione delle quattro credenziali, che e' la sola rimediazione dell'esposizione gia' avvenuta. Aperto sul progetto: il ciclo RWS e' fermo al gate con trentotto evidenze pronte e quattordici fit da verificare, in attesa della revisione manuale; e la nuova voce di roadmap sulla tassonomia in tre lingue.
+Chiuso il 2026-08-04 il ciclo Helpdesk RWS GroupShare Studio (skills-repo `befbee0`, 38 evidenze su 9 Capability, ID pubblicati da 246 a 284) e la revisione delle quattro credenziali: due riguardavano risorse dismesse, le altre due un dipendente non piu' in azienda e un antivirus non piu' in uso, quindi la rotazione non serviva e l'anonimizzazione e' l'unica cosa che contava. Verificata su quattro scope, cioe' file tracciati, ogni blob della storia, sito servito nelle tre lingue e grafo HTML: zero occorrenze.
+
+Chiusa nella stessa sessione la voce di roadmap sulla tassonomia in tre lingue, lato meccanismo: il sito pubblico e' trilingue con plugin i18n a suffisso, inglese di default per una ragione tecnica (i file senza suffisso sono quelli in cui la pipeline inietta e l'ID stabile contiene lo slug), ripiego sulla lingua di default, e l'export scrive in tutte le varianti esistenti con l'ID calcolato sullo slug base. Restano da tradurre 30 pagine di Capability piu' quella delle competenze trasversali, che e' lavoro di contenuto e procede per domini.
+
+Modalita' corrente: manutenzione. Nessun debito aperto.
 
 Stato precedente: sistema maturo (v2.4 post-via di rimozione). Chiuse il 2026-07-29 le prime quattro voci della coda di lavoro lasciata dal passaggio di consegne. `export_to_taxonomy.py` sa ora rimuovere un'evidenza pubblicata e non solo riscriverla, il che soddisfa il prerequisito dichiarato di qualsiasi riclassificazione retroattiva; il gate ha una regola per i domini di terzi, che era l'ultimo punto aperto di riservatezza; `ingest_state.py` esclude l'archivio di scraping e ha il comando `resnapshot` per assorbire un cambio di esclusioni senza falsificare la data di ingest; e la pagina `soft/index.md` del repo pubblico e' stata portata al contratto delle quattro H2 (skills-repo `cfeada5`), cosa che sblocca la Capability `Soft Skills` senza spostare nessuna destinazione sui due corpora storici. La scoperta di metodo della sessione, ora regola in `dev-testing.md`, e' che tre volte su quattro la soluzione corretta a ragionamento era sbagliata alla misura sui corpora reali. Resta aperto il punto 5 della coda, cioe' il prossimo ciclo di ingest, che richiede la scelta della subfolder.
 

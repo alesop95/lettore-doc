@@ -1366,6 +1366,38 @@ Sito ripubblicato e verificato pulito sulle pagine servite, repository con un so
 
 Resta una cosa che nessun passo tecnico di questa giornata ha risolto, e va scritta qui perche' e' la conclusione piu' importante: quelle quattro credenziali sono state servite pubblicamente per mesi, quindi vanno considerate note, e la sola rimediazione reale e' la loro rotazione. Rimuovere un segreto da un repository pubblico ferma l'esposizione futura e non tocca quella passata. Un sistema che pubblica deve percio' avere un controllo sui segreti prima del primo commit, non dopo il primo incidente: e' il tipo di difesa il cui valore si misura solo in cio' che non e' mai accaduto.
 
+## C.17 Ciclo Helpdesk RWS GroupShare Studio, e la tassonomia in tre lingue (2026-08-04)
+
+Il ciclo di ingest che ha aperto la giornata precedente si chiude qui. E' il ciclo che, arrivando alla scansione prima della pubblicazione, ha fatto emergere le quattro credenziali pubblicate di cui racconta la sezione C.16: il suo merito principale e' quindi di essere stato interrotto al momento giusto.
+
+### Selezione, e un nome neutralizzato all'ingresso
+
+La subfolder contiene centoquarantaquattro file, di cui ventitre di testo o PDF. Ne sono stati selezionati quattordici, escludendo per decisione esplicita un questionario commerciale di pre-vendita e un modulo di adesione a un programma partner, che sono materiale contrattuale e non evidenza tecnica, coerentemente con l'esclusione dei questionari fornitori gia' in atto. I sette PDF sono fuori per costruzione, perche' la pipeline processa .docx, .txt e .md, e fra loro ci sono due guide di installazione che, se interessano, vanno convertite a monte.
+
+Un documento e' stato rinominato all'ingresso: il suo nome conteneva il nome proprio di una collega, e la mappa di anonimizzazione riconosce i nomi propri solo in forma nome piu' cognome, quindi un nome singolo dentro un nome di file non sarebbe stato mascherato. E' il vettore chiuso nel ciclo C.13, e la lezione e' che va guardato prima di copiare i documenti, non dopo.
+
+### Un corpus piu' denso di dati personali dei precedenti
+
+L'arricchimento ha prodotto sedici persone, sedici indirizzi di rete, dieci hostname e quattro indirizzi di posta, fra cui quello di un dipendente del fornitore. Su questo corpus sono emersi tre falsi positivi del riconoscitore, che classificava come nomi di persona le etichette di interfaccia in maiuscolo iniziale, fra cui read only, che in un documento sui diritti su un termbase e' il concetto centrale, e Pacchetti Worldserver, che e' un prodotto. Aggiunti alla stoplist i termini dell'ecosistema documentato, con il criterio di non inserire parole generiche: il filtro scarta l'intero candidato se un solo token compare nella lista, quindi un termine comune come manager farebbe cadere uno span che contiene un cognome vero, lasciandolo non mascherato.
+
+Il gate ha scartato una sola evidenza, la scheda credenziali di Trados Enterprise, riconosciuta dalla regola che cerca la parola credenziali accostata a un identificativo di utenza: il valore stava oltre i trecento caratteri del preview, quindi la regola sul valore non sarebbe scattata, ed e' il caso per cui quella regola distinta esiste.
+
+Esito: trentotto evidenze su nove Capability, con quattordici fit su trentotto marcati da verificare, e la revisione manuale ha confermato le destinazioni. Identificativi di evidenza pubblicati da duecentoquarantasei a duecentottantaquattro, senza perdite, con le quattro intestazioni di contratto intatte su tutte le pagine toccate e la scansione delle sole righe aggiunte del diff reale pulita.
+
+### La tassonomia in tre lingue
+
+Nella stessa sessione il sito pubblico e' diventato trilingue, italiano, inglese e spagnolo intercambiabili, con lo stesso impianto gia' adottato per il sito dei progetti: plugin di internazionalizzazione a struttura per suffisso e ripiego sulla lingua di default, che e' la scelta che rende il lavoro sostenibile, perche' una pagina non ancora tradotta resta visibile invece di dare errore e la traduzione avanza una pagina alla volta.
+
+La lingua di default e' l'inglese e non l'italiano come sugli altri siti, per una ragione tecnica e non editoriale: i file senza suffisso sono quelli in cui la pipeline inietta, l'identificativo stabile di un'evidenza contiene lo slug del file, e le quattro intestazioni di contratto su cui gli script si appoggiano sono in inglese. Tenere l'inglese come default lascia intatti gli URL esistenti e gli identificativi gia' pubblicati; il prezzo e' un clic sull'interruttore per chi arriva da un altro sito del portfolio.
+
+La modifica alla pipeline e' piccola e ha un punto delicato. L'export scrive le evidenze in tutte le varianti di lingua esistenti, perche' con questo plugin una pagina tradotta sostituisce integralmente quella di default per la propria lingua, e una traduzione priva della sezione delle evidenze mostrerebbe il lavoro in una lingua sola. Lo slug per l'identificativo si calcola pero' togliendo il suffisso di lingua: senza quel passaggio la stessa evidenza prenderebbe tre identificativi diversi e diventerebbe impossibile riconoscerla, riscriverla o rimuoverla. L'unita' di identita' e' la Capability, non la sua traduzione.
+
+Un dettaglio che vale come conferma degli strumenti aggiunti il giorno prima: il verificatore ha bloccato un commento scritto nella configurazione del sito pubblico, dove un esempio di nome di file con il codice di lingua veniva letto come un nome di dominio di terzi. E' il falso positivo previsto quando quella regola era stata scritta, ed e' corretto che scatti: il commento e' stato riformulato, e ora spiega perche' quella forma non si scrive in un file pubblicato.
+
+### Chiusura
+
+Ciclo chiuso: commit del repository pubblico registrato nello stato di ingest, sito ripubblicato nelle tre lingue e verificato pulito sulle pagine nuove. Restano da tradurre trenta pagine di Capability piu' quella delle competenze trasversali, che e' lavoro di contenuto e procede per domini.
+
 # Lezioni apprese
 
 Prima di costruire qualcosa di nuovo, vale sempre la pena verificare se la funzionalita' necessaria esiste gia' nel codice esistente. Il piano a quattro script sarebbe risultato in meno di duecento righe di codice che replicavano una versione notevolmente piu' povera di cio' che parse_docx.py e extract_entities.py gia' facevano. Il tempo investito nell'analisi del sistema esistente prima di progettare il nuovo ha eliminato mesi di lavoro ridondante.

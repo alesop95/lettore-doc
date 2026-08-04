@@ -11,7 +11,7 @@ covers-paths:
   - scripts/hooks/**
   - .gitignore
   - .graphifyignore
-last-verified-commit: aa801fa
+last-verified-commit: fee90a6
 source-doc: GUIDA-TECNICA.md
 ---
 
