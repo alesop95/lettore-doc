@@ -59,6 +59,7 @@ _notes/
 _intermediate/src/Cybersec-governance-baseline/
 _intermediate/src/Cybersec-endpoint-governance/
 _intermediate/src/Helpdesk-RWS-Groupshare-Studio/
+_intermediate/src/Helpdesk-T-Rex/
 
 # Backup automatici del diario
 *.bak.docx

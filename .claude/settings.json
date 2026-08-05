@@ -32,7 +32,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File E:\\lettore-doc\\scripts\\session_resume.ps1"
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"E:\\lettore-doc\\scripts\\session_resume.ps1\""
           }
         ]
       }

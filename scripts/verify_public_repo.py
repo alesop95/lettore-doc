@@ -96,6 +96,16 @@ NON_NAMES = {
     "link", "file", "case", "team", "room", "read", "only", "offline",
     "periodo", "trados", "studio", "enterprise", "manager", "license",
     "project", "aruba", "seeweb", "fastnet", "vianova",
+    # Parole italiane comuni che il NER estrae come nomi propri quando trova
+    # una coppia "Nome Cognome" dove uno dei due e' un sostantivo. Il ciclo
+    # Helpdesk_T-Rex ha reso evidente il caso: "Procedura Reso" catturata come
+    # persona ha portato "Procedura" nella regex nome-persona e generato quattro
+    # falsi positivi sui documenti di IT tecnica.
+    "procedura", "reso", "storno", "cambio", "anno", "ordine", "fattura",
+    "fatture", "sequenze", "sequenza", "tabella", "pagina", "codice", "codici",
+    "magazzino", "progetto", "progetti", "marca", "marche", "bollo", "bolli",
+    "lavori", "vendite", "acquisti", "revisione", "traduzione", "preventivo",
+    "preventivi", "trasferimento", "impostazioni",
 }
 
 STRUCTURAL_PATTERNS = {
