@@ -1,6 +1,6 @@
 # Snapshot
 
-Branch: `main`. Commit di riferimento: `aa801fa`.
+Branch: `main`. Commit di riferimento: `a159fef`.
 
 ## Stato delle schede
 
@@ -31,7 +31,11 @@ Chiuso il 2026-08-04 il **ciclo Helpdesk RWS GroupShare Studio**: skills-repo `b
 
 Chiusa la voce **tassonomia in tre lingue** lato meccanismo: sito trilingue con plugin i18n a suffisso e ripiego, inglese di default, export che scrive in tutte le varianti con ID sullo slug base. Restano da tradurre 30 pagine di Capability piu' quella delle competenze trasversali: lavoro di contenuto, per domini, una sessione per blocco.
 
-Prossima azione: **nessun debito aperto**. Per un nuovo ciclo partire da `.\scripts\session_resume.ps1`. Partire da `.\scripts\session_resume.ps1`; la sequenza comincia dal passo 0 di pre-flight (`prepare_graphify_source.py`). Candidate mai ingerite, per dimensione: `Helpdesk_T-Rex` (41 doc), `_DA SISTEMARE (Alessio)` (44), `Helpdesk_RWS-Groupshare-Studio` (17, gia' proposta in C.8), un blocco coeso dei piccoli `Helpdesk_*` (NinjaOne, Microsoft 365, Onboarding, Amministrazione, INFOCERT, ABBYY, Timbracartellini, circa 35 in totale), `TOOL AI coding assistance` (9). Le grandi (`ENIVIPA` 2500, `SCENIA` 918, `OpenAI` 267) restano da affrontare con una segmentazione per coesione semantica, non in blocco.
+Chiuso il 2026-08-05 il **ciclo Helpdesk_T-Rex**: skills-repo `a254d97`, 15 evidenze su 7 Capability (24 documenti selezionati su 41 sorgenti), `ingest_state` registrato. La revisione manuale del diff ha rifiutato 11 fit e la sola nuova Capability proposta: la Capability *Time & Attendance Management* aveva rivendicato otto nodi fuori tema (GroupShare/Trados/ESXi/backup) per keyword troppo permissive nel suo `## Technologies & tools`, e altri tre fit poggiavano su un solo token generico (`quality`, `team`, `policy`). Al verify post-apply e' emerso un falso positivo del riconoscitore italiano di *NER* su `Procedura Reso`, che aveva promosso *Procedura* nella regex `nome-persona` producendo quattro segnalazioni. La fix, ora nel commit `a159fef`, e' l'ampliamento del set `NON_NAMES` di `verify_public_repo.py` con trenta parole italiane comuni che il NER tende a estrarre come nomi propri quando trova coppie di sostantivi con l'iniziale maiuscola. Diario C.18.
+
+Prossima azione: **nessun debito aperto**. Per un nuovo ciclo partire da `.\scripts\session_resume.ps1`. Candidate mai ingerite, per dimensione: `_DA SISTEMARE (Alessio)` (44), un blocco coeso dei piccoli `Helpdesk_*` (NinjaOne, Microsoft 365, Onboarding, Amministrazione, INFOCERT, ABBYY, Timbracartellini, circa 35 in totale), `TOOL AI coding assistance` (9). Le grandi (`ENIVIPA` 2500, `SCENIA` 918, `OpenAI` 267) restano da affrontare con una segmentazione per coesione semantica, non in blocco.
+
+Nota da tenere sul tavolo dopo C.18: le keyword di *Time & Attendance Management* meritano una potatura, perche' il ciclo T-Rex ha mostrato che rivendicano nodi da qualunque dominio contenga `schedule`, `release`, `snapshot`, `backup`. La correzione naturale e' guardare quelle keyword una a una nella pagina pubblica e togliere le tre-quattro che hanno prodotto la fuga; da fare a inizio del prossimo ciclo che tocchi *IT Operations*.
 
 Due note operative. Nel segmento `Cybersec & IT Governance` restano non lavorate le subfolder `Privacy (GDPR e Contratti)` (33), `_VA e Pentest assessment` (12, con report di rischio da escludere), `_QUESTIONARI FORNITORI` (126, dati di terzi, da escludere), e i dieci documenti non processati di `_ GDPR E ISO27001`. I 996 file che il digest segnalava come nuovi su `Miscellaneous procedure e utilities`, tutti scraping di brochure di fondi di terzi, non compaiono piu': la cartella e' in `EXCLUDE_DIR_NAMES` e lo snapshot e' stato riallineato con `resnapshot`.
 
