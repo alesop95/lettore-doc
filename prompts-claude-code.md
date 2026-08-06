@@ -1,15 +1,12 @@
 # Prompt template - operazioni ricorrenti con Claude Code
 
-Usare questi prompt copia-incollando direttamente nel terminale Claude Code.
-Ogni prompt è ottimizzato per minimizzare i token consumati e massimizzare
-la precisione dell'output.
+Usare questi prompt copia-incollando direttamente nel terminale Claude Code. Ogni prompt è ottimizzato per minimizzare i token consumati e massimizzare la precisione dell'output.
 
 ---
 
 ## 1. Sintesi narrative batch (vault Obsidian privato)
 
-**Contesto**: dopo aver lanciato `run_pipeline.ps1`, genera le sintesi narrative
-dei documenti. Usare in `E:\lettore-doc` con il subagente lettore-documentazione.
+**Contesto**: dopo aver lanciato `run_pipeline.ps1`, genera le sintesi narrative dei documenti. Usare in `E:\lettore-doc` con il subagente lettore-documentazione.
 
 ```
 Usa il subagente lettore-documentazione.
@@ -42,8 +39,7 @@ lotti di 5, inglese, 150-200 parole, nessun nome di cliente.
 
 ## 2. Ispezione rapida di un corpus prima di graphify
 
-**Contesto**: valuta quanto è grande una cartella sorgente prima di lanciarci
-graphify, per stimare il consumo token.
+**Contesto**: valuta quanto è grande una cartella sorgente prima di lanciarci graphify, per stimare il consumo token.
 
 ```
 Conta i file .docx, .txt e .md nella cartella
@@ -62,8 +58,7 @@ conviene suddividere per sottocartella.
 
 ## 3. Revisione assistita del taxonomy_diff.md
 
-**Contesto**: dopo `map_to_taxonomy.py`, ti aiuta a revisionare il diff.
-Usare in `E:\lettore-doc`.
+**Contesto**: dopo `map_to_taxonomy.py`, ti aiuta a revisionare il diff. Usare in `E:\lettore-doc`.
 
 ```
 Leggi _intermediate/taxonomy_diff.md e _intermediate/taxonomy_index.json.
@@ -89,8 +84,7 @@ Non modificare nessun file: solo analisi e proposte.
 
 ## 4. Aggiornamento manuale di una Capability page
 
-**Contesto**: arricchisci manualmente Overview, Technologies & tools o
-Responsibilities di una Capability specifica. Usare in `J:\...\skills-repo`.
+**Contesto**: arricchisci manualmente Overview, Technologies & tools o Responsibilities di una Capability specifica. Usare in `J:\...\skills-repo`.
 
 ```
 Leggi il file docs/<domain>/<capability>.md.
@@ -112,8 +106,7 @@ Mostrami la diff prima di scrivere. Scrivi solo dopo mia conferma.
 
 ## 5. Aggiunta di un progetto manuale a una Capability
 
-**Contesto**: aggiungi un progetto scritto da te (non estratto da graphify)
-a una Capability page. Usare in `J:\...\skills-repo`.
+**Contesto**: aggiungi un progetto scritto da te (non estratto da graphify) a una Capability page. Usare in `J:\...\skills-repo`.
 
 ```
 In docs/<domain>/<capability>.md, aggiungi sotto "## Projects & evidence"
@@ -135,8 +128,7 @@ Mostrami il blocco risultante prima di scriverlo.
 
 ## 6. Query esplorativa sul vault Obsidian privato
 
-**Contesto**: esplora relazioni non ovvie nella documentazione.
-Usare in `E:\lettore-doc` con il subagente lettore-documentazione.
+**Contesto**: esplora relazioni non ovvie nella documentazione. Usare in `E:\lettore-doc` con il subagente lettore-documentazione.
 
 ```
 Usa il subagente lettore-documentazione.
@@ -165,8 +157,7 @@ Usa solo i JSON intermedi, non leggere i .docx originali.
 
 ## 7. Generazione MOC tematica nel vault privato
 
-**Contesto**: crea una Map of Content manuale per un cluster specifico.
-Usare in `E:\lettore-doc` con il subagente lettore-documentazione.
+**Contesto**: crea una Map of Content manuale per un cluster specifico. Usare in `E:\lettore-doc` con il subagente lettore-documentazione.
 
 ```
 Usa il subagente lettore-documentazione.
@@ -192,8 +183,7 @@ Non leggere i .docx originali: usa solo le sezioni-preview in _intermediate/sect
 
 ## 8. Debug della pipeline
 
-**Contesto**: diagnostica un errore nella pipeline.
-Usare in `E:\lettore-doc`.
+**Contesto**: diagnostica un errore nella pipeline. Usare in `E:\lettore-doc`.
 
 ```
 La pipeline ha prodotto questo errore:
@@ -214,8 +204,7 @@ Proponi il fix minimale senza toccare la logica degli script.
 
 ## 9. Stima costo token prima di un run graphify
 
-**Contesto**: valuta il budget prima di lanciare graphify su una cartella
-grande. Usare prima di avviare Claude Code sulla cartella sorgente.
+**Contesto**: valuta il budget prima di lanciare graphify su una cartella grande. Usare prima di avviare Claude Code sulla cartella sorgente.
 
 ```
 Conta i file nella cartella "<percorso-sorgente>" con:
@@ -238,8 +227,7 @@ Dimmi se conviene suddividere per sottocartella.
 
 ## 10. Verifica integrità di skills-repo prima del push
 
-**Contesto**: verifica che il sito non abbia link rotti prima di pushare.
-Usare in `J:\...\skills-repo`.
+**Contesto**: verifica che il sito non abbia link rotti prima di pushare. Usare in `J:\...\skills-repo`.
 
 ```
 Verifica che tutti i file elencati nel nav: di mkdocs.yml esistano

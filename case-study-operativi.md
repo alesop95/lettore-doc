@@ -1,14 +1,12 @@
 # Case study operativi — lettore-doc + skills-repo
 
-Tutti i casi d'uso reali con comandi concreti.
-I path usano le variabili di ambiente gia' settate nel sistema.
+Tutti i casi d'uso reali con comandi concreti. I path usano le variabili di ambiente gia' settate nel sistema.
 
 ---
 
 ## Caso 1 — Primo run assoluto su una cartella sorgente
 
-**Scenario**: il sistema e' appena stato installato. Nessun run precedente.
-Vuoi processare per la prima volta `LETTERDOC_SOURCE_ONEDRIVE`.
+**Scenario**: il sistema e' appena stato installato. Nessun run precedente. Vuoi processare per la prima volta `LETTERDOC_SOURCE_ONEDRIVE`.
 
 ```powershell
 # Apri Claude Code sulla cartella sorgente
@@ -22,8 +20,7 @@ Dentro Claude Code:
 /graphify .
 ```
 
-Attendi il completamento (10-30 min su corpus grande). Leggi
-`graphify-out/GRAPH_REPORT.md` per verificare la qualita' dell'estrazione.
+Attendi il completamento (10-30 min su corpus grande). Leggi `graphify-out/GRAPH_REPORT.md` per verificare la qualita' dell'estrazione.
 
 ```powershell
 # Torna su lettore-doc e lancia la pipeline offline
@@ -68,8 +65,7 @@ git push
 
 ## Caso 2 — Aggiornamento mensile (corpus invariato + nuovi documenti)
 
-**Scenario**: e' passato un mese. Hai aggiunto nuovi file alla cartella sorgente
-ma la maggior parte dei documenti non e' cambiata. Vuoi un refresh efficiente.
+**Scenario**: e' passato un mese. Hai aggiunto nuovi file alla cartella sorgente ma la maggior parte dei documenti non e' cambiata. Vuoi un refresh efficiente.
 
 ```powershell
 # graphify --update processa solo i file modificati dal run precedente
@@ -112,16 +108,13 @@ git commit -m "Monthly taxonomy update — $(Get-Date -Format 'yyyy-MM-dd')"
 git push
 ```
 
-**Risparmio token**: proporzionale alla percentuale di file invariati.
-Su 200 file di cui 10 modificati, il risparmio e' circa 95%.
+**Risparmio token**: proporzionale alla percentuale di file invariati. Su 200 file di cui 10 modificati, il risparmio e' circa 95%.
 
 ---
 
 ## Caso 3 — Nuovo progetto completato (case study dal documento incollato)
 
-**Scenario**: hai appena completato una migrazione server. Hai prodotto tre .docx
-con analisi tecnica, configurazioni e verbale. Li hai salvati in una sottocartella
-dedicata. Vuoi che le competenze appaiano sul sito entro stasera.
+**Scenario**: hai appena completato una migrazione server. Hai prodotto tre .docx con analisi tecnica, configurazioni e verbale. Li hai salvati in una sottocartella dedicata. Vuoi che le competenze appaiano sul sito entro stasera.
 
 ```powershell
 # Vai nella cartella del progetto specifico
@@ -136,9 +129,7 @@ Dentro Claude Code:
 /graphify .
 ```
 
-Stima: 3 file -> ~15k token, meno di un minuto.
-Leggi `graphify-out/GRAPH_REPORT.md`: god nodes attesi "Proxmox VE Cluster
-Migration", "SSH Tunnel Configuration", "Veeam Backup Strategy".
+Stima: 3 file -> ~15k token, meno di un minuto. Leggi `graphify-out/GRAPH_REPORT.md`: god nodes attesi "Proxmox VE Cluster Migration", "SSH Tunnel Configuration", "Veeam Backup Strategy".
 
 ```powershell
 cd E:\lettore-doc
@@ -162,17 +153,11 @@ notepad _intermediate\taxonomy_diff.md
 
 **Cosa trovi nel diff e come gestirti**:
 
-- `Fit [Infrastructure] Infrastructure & Virtualization` -> Proxmox VE Cluster
-  Migration, High Availability Configuration: corretto, tieni.
-- `Fit [Infrastructure] Backup & Disaster Recovery` -> Veeam Backup Strategy:
-  corretto, tieni.
-- `Fit [IT Operations] System Administration` -> SSH Tunnel Configuration:
-  corretto, tieni.
-- `Fit [Infrastructure] Networking & Security` -> SSH Multi-Account Setup:
-  falso positivo (e' documentazione Git non rete aziendale). Elimina.
-- `New Capability [Infrastructure]` -> "Proxmox Ve Cluster Migration":
-  rinomina in taxonomy_diff.md come "Proxmox VE & HA Cluster Operations",
-  slug `proxmox-ha-cluster`, file `infrastructure/proxmox-ha-cluster.md`.
+- `Fit [Infrastructure] Infrastructure & Virtualization` -> Proxmox VE Cluster Migration, High Availability Configuration: corretto, tieni.
+- `Fit [Infrastructure] Backup & Disaster Recovery` -> Veeam Backup Strategy: corretto, tieni.
+- `Fit [IT Operations] System Administration` -> SSH Tunnel Configuration: corretto, tieni.
+- `Fit [Infrastructure] Networking & Security` -> SSH Multi-Account Setup: falso positivo (e' documentazione Git non rete aziendale). Elimina.
+- `New Capability [Infrastructure]` -> "Proxmox Ve Cluster Migration": rinomina in taxonomy_diff.md come "Proxmox VE & HA Cluster Operations", slug `proxmox-ha-cluster`, file `infrastructure/proxmox-ha-cluster.md`.
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\export_to_taxonomy.py `
@@ -201,16 +186,13 @@ git commit -m "Add evidence from 2026-migration-server — new Capability: Proxm
 git push
 ```
 
-**Risultato**: in ~1 minuto il sito ha la pagina
-`alesop95.github.io/skills/infrastructure/proxmox-ha-cluster/` stabile
-e inseribile nel CV. Tempo totale: 13 minuti.
+**Risultato**: in ~1 minuto il sito ha la pagina `alesop95.github.io/skills/infrastructure/proxmox-ha-cluster/` stabile e inseribile nel CV. Tempo totale: 13 minuti.
 
 ---
 
 ## Caso 4 — Elaborare piu' sorgenti in sequenza
 
-**Scenario**: vuoi processare sia OneDrive che Google Drive Portfolio
-in un unico ciclo e aggregare le skill da entrambe.
+**Scenario**: vuoi processare sia OneDrive che Google Drive Portfolio in un unico ciclo e aggregare le skill da entrambe.
 
 ```powershell
 # Sorgente 1: OneDrive
@@ -278,19 +260,16 @@ git push
 
 ## Caso 5 — Vault Obsidian privato (navigazione locale della documentazione)
 
-**Scenario**: vuoi esplorare le relazioni tra documenti in locale,
-cercare chi cita chi, navigare il grafo privato.
+**Scenario**: vuoi esplorare le relazioni tra documenti in locale, cercare chi cita chi, navigare il grafo privato.
 
 ```powershell
 cd E:\lettore-doc
 .\run_pipeline.ps1 -SourceFolder $env:LETTERDOC_SOURCE_ONEDRIVE
 ```
 
-A fine run apri Obsidian: `File -> Open folder as vault` ->
-seleziona `E:\lettore-doc\vault-output\`.
+A fine run apri Obsidian: `File -> Open folder as vault` -> seleziona `E:\lettore-doc\vault-output\`.
 
-Navigazione di partenza: `index.md` (Mappa della Conoscenza).
-Graph view: `Ctrl+G`.
+Navigazione di partenza: `index.md` (Mappa della Conoscenza). Graph view: `Ctrl+G`.
 
 **Per aggiornamento incrementale** (solo file modificati):
 ```powershell
@@ -306,8 +285,7 @@ Graph view: `Ctrl+G`.
 
 ## Caso 6 — Sintesi narrative con il subagente (vault privato)
 
-**Scenario**: hai generato il vault ma le pagine mostrano il placeholder
-"Sintesi non ancora generata". Vuoi aggiungere le sintesi.
+**Scenario**: hai generato il vault ma le pagine mostrano il placeholder "Sintesi non ancora generata". Vuoi aggiungere le sintesi.
 
 ```powershell
 cd E:\lettore-doc
@@ -335,8 +313,7 @@ A sintesi completate:
 
 ## Caso 7 — Aggiunta manuale di una Capability senza graphify
 
-**Scenario**: hai competenze su un'area non ancora nella tassonomia e
-vuoi aggiungerla manualmente senza aspettare un run graphify.
+**Scenario**: hai competenze su un'area non ancora nella tassonomia e vuoi aggiungerla manualmente senza aspettare un run graphify.
 
 Crea `J:\...\skills-repo\docs\<domain>\<slug>.md`:
 
@@ -375,9 +352,7 @@ git push
 
 ## Caso 8 — Utilizzo ortogonale: Knowledge Graph del portfolio
 
-**Scenario**: vuoi aggiornare la visualizzazione interattiva del portfolio
-(il `graph.html` che mostra le relazioni tra Capability come grafo navigabile).
-Da fare quando la struttura della tassonomia cambia significativamente.
+**Scenario**: vuoi aggiornare la visualizzazione interattiva del portfolio (il `graph.html` che mostra le relazioni tra Capability come grafo navigabile). Da fare quando la struttura della tassonomia cambia significativamente.
 
 ```powershell
 cd "$env:LETTERDOC_SKILLS_REPO"
@@ -390,8 +365,7 @@ Dentro Claude Code:
 /graphify docs/
 ```
 
-graphify legge i .md delle Capability e costruisce un grafo semantico
-del portfolio (come nello screenshot: 141 nodi, 195 archi, 14 community).
+graphify legge i .md delle Capability e costruisce un grafo semantico del portfolio (come nello screenshot: 141 nodi, 195 archi, 14 community).
 
 Dopo il run:
 ```powershell
@@ -412,12 +386,9 @@ git commit -m "Update Skills Knowledge Graph"
 git push
 ```
 
-**Risultato**: `alesop95.github.io/skills/graphify-out/graph.html`
-mostra il grafo interattivo. I god nodes (Capability con piu' connessioni)
-riflettono le aree di maggiore trasversalita' del tuo profilo.
+**Risultato**: `alesop95.github.io/skills/graphify-out/graph.html` mostra il grafo interattivo. I god nodes (Capability con piu' connessioni) riflettono le aree di maggiore trasversalita' del tuo profilo.
 
-**Nota**: consuma token (graphify legge tutti i .md di docs/).
-Stimato: ~30 file .md * 1.500 token = ~45k token per run.
+**Nota**: consuma token (graphify legge tutti i .md di docs/). Stimato: ~30 file .md * 1.500 token = ~45k token per run.
 
 ---
 

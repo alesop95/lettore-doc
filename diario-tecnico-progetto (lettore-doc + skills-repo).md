@@ -74,44 +74,23 @@ Ad esempio, Claude Code 2.1.142, Opus 4.7 con contesto 1M, autenticato come memb
 
 Quindi va fatto il login con l’account Team e installato graphifycon [office] per supporto .docx. Poi si farà il test rapido su una cartella esempio con pochi docx per validare che l'estrazione funzioni in italiano (graphify non è specializzato per italiano, è importante vedere cosa intercetta).
 
-Si può verificare intanto se c’è pipx (se non si è mai usato no):
-pipx --version
+Si può verificare intanto se c’è pipx (se non si è mai usato no): pipx --version
 
-Se restituisce errore "non riconosciuto", installa pipx prima di tutto (powershell):
-python -m pip install --user pipx
-python -m pipx ensurepath
+Se restituisce errore "non riconosciuto", installa pipx prima di tutto (powershell): python -m pip install --user pipx python -m pipx ensurepath
 
 Chiudere e riaprire il terminale dopo ensurepath per ricaricare il PATH.
 
-Installare graphify con extras office in un colpo solo:
-pipx install "graphifyy[office]"
+Installare graphify con extras office in un colpo solo: pipx install "graphifyy[office]"
 
-Le virgolette sono obbligatorie su PowerShell (le parentesi quadre vengono altrimenti interpretate). Con una sola invocazione: installa il pacchetto base + il supporto .docx/.xlsx. Si può quindi registrare la skill in Claude Code (versione Windows):
-graphify install --platform windows
-questo praticamente scrive SKILL.md nelle posizioni che Claude Code legge automaticamente cosicchè, da quel momento in poi /graphify diventa un comando riconosciuto dentro la sessione claude.
+Le virgolette sono obbligatorie su PowerShell (le parentesi quadre vengono altrimenti interpretate). Con una sola invocazione: installa il pacchetto base + il supporto .docx/.xlsx. Si può quindi registrare la skill in Claude Code (versione Windows): graphify install --platform windows questo praticamente scrive SKILL.md nelle posizioni che Claude Code legge automaticamente cosicchè, da quel momento in poi /graphify diventa un comando riconosciuto dentro la sessione claude.
 
-Per verificare si può fare:
-pipx list
-che ha avuto come output:
-venvs are in C:\Users\Utente\pipx\venvs
-apps are exposed on your $PATH at C:\Users\Utente\.local\bin
-manual pages are exposed at C:\Users\Utente\.local\share\man
-   package graphifyy 0.8.14, installed using Python 3.13.1
-    - graphify.exe
-e poi il comando:
-graphify –version
-che ha come output atteso qualcosa come “graphify 0.8.14” e poi:
-graphify install --platform windows
-che ha avuto come output:
-skill installed  ->  C:\Users\Utente\.claude\skills \graphify\SKILL.md
+Per verificare si può fare: pipx list che ha avuto come output: venvs are in C:\Users\Utente\pipx\venvs apps are exposed on your $PATH at C:\Users\Utente\.local\bin manual pages are exposed at C:\Users\Utente\.local\share\man package graphifyy 0.8.14, installed using Python 3.13.1 - graphify.exe e poi il comando: graphify –version che ha come output atteso qualcosa come “graphify 0.8.14” e poi: graphify install --platform windows che ha avuto come output: skill installed  ->  C:\Users\Utente\.claude\skills \graphify\SKILL.md
 
 CLAUDE.md        ->  created at C:\Users\Utente\.claude\CLAUDE.md
 
-Done. Open your AI coding assistant and type:
-/graphify
+Done. Open your AI coding assistant and type: /graphify
 
-A questo punto, per il motivo descritto sopra, non è stato necessario lanciare /graphify da nessuna parte. Il primo run reale lo si farà nella fase successiva, su una cartella sorgente piccola e selezionata, in modo da contenere il consumo token.
-……….
+A questo punto, per il motivo descritto sopra, non è stato necessario lanciare /graphify da nessuna parte. Il primo run reale lo si farà nella fase successiva, su una cartella sorgente piccola e selezionata, in modo da contenere il consumo token. ……….
 
 #### Test condotto
 
@@ -133,11 +112,7 @@ Difatti, una delle scoperte piu' interessanti avvenute durante lo sviluppo e' ch
 
 ### Riflessione sul vincolo "tutto sempre aggiornato"
 
-Lo scopo finale che hai ribadito ha tre componenti che vanno tenute insieme:
-skills sempre aggiornato,
-capacità di leggere documenti enormi da più cartelle,
-tutto incrementale. graphify nativamente supporta --update (re-estrae solo i file modificati)
-e ha git hooks (graphify hook install) che ricostruiscono dopo ogni commit. lettore-docha già la modalità incrementale via hash. Quindi entrambi gli strumenti soddisfano già il requisito di aggiornamento incrementale, e basta orchestrarli.
+Lo scopo finale che hai ribadito ha tre componenti che vanno tenute insieme: skills sempre aggiornato, capacità di leggere documenti enormi da più cartelle, tutto incrementale. graphify nativamente supporta --update (re-estrae solo i file modificati) e ha git hooks (graphify hook install) che ricostruiscono dopo ogni commit. lettore-docha già la modalità incrementale via hash. Quindi entrambi gli strumenti soddisfano già il requisito di aggiornamento incrementale, e basta orchestrarli.
 
 Per le 5+ cartelle sorgente: graphify accetta un path per invocation. La strategia è una sources.yml letta da uno script orchestratore che cicla sulle sorgenti, lancia graphify su ognuna, e accumula i graph.json risultanti. Oppure (preferibile) graphify ha il comando merge-graphs a.json b.json --out merged.json che fonde i grafi di run diversi. Quindi il pipeline diventa: ciclo sulle sorgenti → graphify per ciascuna → merge dei graph.json → post-processing italiano → mapping su taxonomy.
 
@@ -1020,21 +995,13 @@ In tutti questi sviluppi futuri, il vincolo architetturale del confine tra domin
 
 Il primo ciclo di ingest end-to-end su una sorgente reale è stato eseguito sulla subfolder
 
-OneDrive\Documenti - IT\Helpdesk_PC formatting
-scelta come pilot per tre motivi: dimensione adatta (24 file di testo + 41 immagini), tema coerente con una Capability già presente ma vuota (
-formatting-machines-os.md
-), e contenuto tecnico privo di nomi cliente sensibili, utile per validare la pipeline senza vincoli di privacy elevati.
+OneDrive\Documenti - IT\Helpdesk_PC formatting scelta come pilot per tre motivi: dimensione adatta (24 file di testo + 41 immagini), tema coerente con una Capability già presente ma vuota ( formatting-machines-os.md ), e contenuto tecnico privo di nomi cliente sensibili, utile per validare la pipeline senza vincoli di privacy elevati.
 
 ## Infrastruttura aggiunta in questo ciclo
 
-Prima di lanciare il pilot è stato costruito lo state tracking degli ingest, che mantiene
-_intermediate\ingest_state.json
-con un snapshot sha256+mtime per ogni file di testo di ciascuna subfolder già ingerita, insieme alla data dell’ultimo ingest e al commit del skills-repo associato.
+Prima di lanciare il pilot è stato costruito lo state tracking degli ingest, che mantiene _intermediate\ingest_state.json con un snapshot sha256+mtime per ogni file di testo di ciascuna subfolder già ingerita, insieme alla data dell’ultimo ingest e al commit del skills-repo associato.
 
-Nuovi script:
-scripts\ingest_state.py — CLI con tre comandi (status, track, untrack).
-scripts\session_resume.ps1 — wrapper PowerShell che stampa il digest dei delta a ogni apertura di sessione.
-scripts\start_graphify.ps1 — launcher dedicato per graphify che forza --model claude-opus-4-7 sulla subfolder sorgente (il default di progetto non si propaga alle sessioni aperte fuori dalla root del repository).
+Nuovi script: scripts\ingest_state.py — CLI con tre comandi (status, track, untrack). scripts\session_resume.ps1 — wrapper PowerShell che stampa il digest dei delta a ogni apertura di sessione. scripts\start_graphify.ps1 — launcher dedicato per graphify che forza --model claude-opus-4-7 sulla subfolder sorgente (il default di progetto non si propaga alle sessioni aperte fuori dalla root del repository).
 
 È stato configurato claude-opus-4-7 come modello di default di progetto in .claude\settings.json con un hook SessionStart che lancia automaticamente session_resume.ps1 a ogni nuova sessione. Aggiunta una nuova REGOLA OPERATIVA in CLAUDE.md (“State tracking ingest”) e una sezione “Riprendere il lavoro” in README.md.
 
@@ -1065,14 +1032,11 @@ La regex non richiedeva spazio obbligatorio tra le due parole capitalizzate, qui
 L’euristica regex+stoplist non scalerà. Per il pilot ho usato --no-anonymize (i preview sono stati iniettati verbatim), valutando manualmente che il contenuto della subfolder non contenesse riferimenti sensibili. Per i prossimi cicli su subfolder con contenuto più formale (ENIVIPA, Cybersec & IT Governance) servierà un modello NER vero (es. spaCy it_core_news_lg) o passaggio a embedding-based classification. Apertura task per la prossima fase di tuning.
 
 ## Stato attuale dopo il ciclo C.8
-skills-repo: 8 Capability popolate o aggiornate; in particolare formatting-machines-os.md passa da 94 byte (placeholder) a ~14 kB con 31 voci di evidence. Pubblicato su https://alesop95.github.io/skills/formatting-machines-os/ (commit 19a4ba7).
-lettore-doc: nuovi script di state tracking, hook SessionStart attivo, default modello Opus 4.7. Commit ab88238.
-ingest_state.json: tracciata 1 subfolder (Helpdesk_PC formatting), altre 26 subfolder OneDrive + 14 Portfolio in attesa.
+skills-repo: 8 Capability popolate o aggiornate; in particolare formatting-machines-os.md passa da 94 byte (placeholder) a ~14 kB con 31 voci di evidence. Pubblicato su https://alesop95.github.io/skills/formatting-machines-os/ (commit 19a4ba7). lettore-doc: nuovi script di state tracking, hook SessionStart attivo, default modello Opus 4.7. Commit ab88238. ingest_state.json: tracciata 1 subfolder (Helpdesk_PC formatting), altre 26 subfolder OneDrive + 14 Portfolio in attesa.
 
 ## Prossimi cicli proposti
 
-Subfolder candidate per il prossimo ciclo (criteri: dimensione media, mapping pulito a Capability esistente, contenuto tecnico):
-ARCHITETTURA SERVER-CLOUD-LINEE (23 doc, 4 img) — Capability target: infrastructure-virtualization, cloud-platforms.
+Subfolder candidate per il prossimo ciclo (criteri: dimensione media, mapping pulito a Capability esistente, contenuto tecnico): ARCHITETTURA SERVER-CLOUD-LINEE (23 doc, 4 img) — Capability target: infrastructure-virtualization, cloud-platforms.
 
 Helpdesk_RWS-Groupshare-Studio (16 doc, 114 img) — Capability target: software-license-management, advanced-helpdesk.
 
