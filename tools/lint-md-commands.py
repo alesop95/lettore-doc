@@ -79,14 +79,17 @@ def check_block(path, info, start, block):
     # come avviso, non come errore, mentre lo stesso backslash in un blocco
     # `powershell` non funziona affatto. Gli avvisi non cambiano il codice di uscita.
     info_l = info.lower()
-    shell_bash = bool(re.match(r'^(bash|sh|shell|zsh|console|terminal)\b', info_l))
     shell_ps = bool(re.match(r'^(powershell|pwsh|ps1)\b', info_l))
     out = []
     for n, (idx, line) in enumerate(block):
         body = line.rstrip()
         if body.endswith('\\'):
-            grave = not shell_bash
-            out.append((path, idx, 'continuazione con backslash', body, grave))
+            # Mai un errore di per se': o e' la continuazione idiomatica di bash,
+            # o e' un percorso Windows che finisce con la barra rovesciata, come in
+            # `git add docs\`. I due casi non si distinguono con certezza da qui, e
+            # quando si tratta davvero di un comando git spezzato lo intercetta il
+            # controllo apposta, piu' sotto.
+            out.append((path, idx, 'continuazione con backslash', body, False))
         elif body.endswith('`'):
             out.append((path, idx, 'continuazione con backtick PowerShell', body, not shell_ps))
         elif body.endswith('^'):
