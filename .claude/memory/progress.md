@@ -2,6 +2,19 @@
 
 > Append-only, ordine cronologico inverso.
 
+## 2026-09-14 — Passo 0 del primo ciclo su `portfolio_it`: selezionati e preparati 19 documenti da `CERTs`
+
+**Selezione, non automatismo.** Scelta a mano l'area `CERTs` dentro `Cybersec, BC, IT governance, DevOps, Programming, Networking\CYBERSECURITY, BC, governance` (certificazioni: CISSP, CompTIA Security+, ISO/IEC 27001, i tentativi abbandonati in `aborted/`, più due note di ragionamento alla radice). Esclusi deliberatamente `.claude/`, `CLAUDE.md` e `CLAUDE.local.md`: sono la configurazione di un mini-progetto Claude Code che l'utente ha costruito per studiare (un tutor Security+, un auditor ISO 27001), non materiale di studio sulla cybersecurity in se'. Nessun materiale contrattuale, commerciale o di terzi nel lotto: sono note personali di preparazione.
+
+**Copia**, da una sessione su `my-cv`: 19 file copiati da Proton in `_intermediate/src/OngoingStudies-Certs/`, verificati uno per uno per SHA256. Servito un SUBST temporaneo sulla cartella sorgente, perche' il percorso reale supera i 190 caratteri da solo e alcuni file dentro `aborted/` si avvicinano al limite di 260. Script in `_notes/copia-ciclo-ongoingstudies-certs.ps1`, non versionato.
+
+**Pre-flight**: `prepare_graphify_source.py` conferma che tutti e 19 passano il filtro sui nomi di graphify, zero scartati. Cartella `OngoingStudies-Certs-sanitized/` generata con `--apply`: 19 documenti convertiti in Markdown, nessun nome ha richiesto neutralizzazione. Aggiunta la cartella nuova a `.gitignore` e `.graphifyignore`, per simmetria con i cicli precedenti.
+
+**Non fatto, e resta il passo vero**: la sessione interattiva `/graphify .` (Passo 1), che consuma token e richiede l'account dedicato di questa macchina. Da fare con:
+```
+.\scripts\start_graphify.ps1 -SourceFolder "_intermediate\src\OngoingStudies-Certs-sanitized" -Account account2
+```
+
 ## 2026-09-14 — Sorgente `portfolio_it` riparata e ripuntata su Proton, da una sessione su `my-cv`
 
 **Non un ciclo, una preparazione.** Eseguito da una sessione aperta su `my-cv`, nel corso del microstep 5 della sua Fase 7, che chiede di dichiarare il corpus di `Ongoing studies` come sorgente per questa pipeline. Nessun documento e' stato ingerito: il digest di `session_resume.ps1` conferma che `portfolio_it` non compare in nessun ingest storico, quindi il lavoro qui e' solo di configurazione.
