@@ -23,6 +23,7 @@ contrario produce fiducia in una copertura inesistente.
 
 Uso:
   python tools/registro.py stato    <registro.jsonl> [--radice R] [--soglia N]
+  python tools/registro.py attendi  <registro.jsonl> [--radice R] [--ogni N] [--fermo N]
   python tools/registro.py prossimo <registro.jsonl> [--quanti N] [--agente A]
   python tools/registro.py genera   <registro.jsonl> --da <cartella> --pattern <glob>
                                     [--radice R] [--artefatti <cartella>] [--estensione .md]
@@ -44,7 +45,13 @@ def leggi(percorso):
     righe = []
     if not os.path.exists(percorso):
         return righe
-    with open(percorso, 'r', encoding='utf-8') as f:
+    # utf-8-sig e non utf-8: un agente che riscrive il registro da PowerShell vi
+    # antepone un BOM, e con 'utf-8' la PRIMA RIGA non si interpreta piu'. Il
+    # lettore la scartava in silenzio, e il registro risultava avere un elemento
+    # in meno: sembrava una riga persa dall'agente, era il lettore che non la
+    # leggeva. Un errore di decodifica che si presenta come dato mancante e' il
+    # modo peggiore di sbagliare, perche' porta a cercare il difetto altrove.
+    with open(percorso, 'r', encoding='utf-8-sig') as f:
         for n, riga in enumerate(f, 1):
             riga = riga.strip()
             if not riga:
@@ -193,6 +200,56 @@ def cmd_stato(args):
     return 0
 
 
+
+def cmd_attendi(args):
+    """Osserva il registro finche' il lavoro non si ferma.
+
+    Risponde alla domanda pratica "come faccio a sapere quando ha finito",
+    che non si risolve guardando il file di sessione dell'agente: quello viene
+    scritto con ritardo e il suo orario NON dice se il lavoro stia procedendo.
+    Il registro invece cambia a ogni elemento chiuso, quindi e' l'unico segnale
+    affidabile.
+    """
+    import time
+    precedente = -1
+    fermo = 0
+    print('In attesa. Controllo ogni %d secondi; dichiaro finito dopo %d controlli senza progresso.'
+          % (args.ogni, args.fermo))
+    print('Interrompi con Ctrl+C quando vuoi: non tocca nulla.')
+    print('')
+    while True:
+        righe = leggi(args.registro)
+        conclusi = 0
+        for r in righe:
+            art = r.get('artefatto') or ''
+            if art and not os.path.isabs(art):
+                art = os.path.join(args.radice, art)
+            ok, _ = artefatto_valido(art, SOGLIA_BYTE)
+            if ok:
+                conclusi += 1
+        totale = len(righe)
+        ora = time.strftime('%H:%M:%S')
+        if conclusi != precedente:
+            fermo = 0
+            print('  %s  %d su %d conclusi  (+%d)' % (ora, conclusi, totale, 0 if precedente < 0 else conclusi - precedente))
+        else:
+            fermo += 1
+            print('  %s  %d su %d conclusi  (fermo da %d controlli)' % (ora, conclusi, totale, fermo))
+        precedente = conclusi
+
+        if conclusi >= totale:
+            print('')
+            print('FINITO: tutti gli elementi sono conclusi.')
+            return 0
+        if fermo >= args.fermo:
+            print('')
+            print('FINITO: nessun progresso da %d controlli. Restano %d elementi.'
+                  % (fermo, totale - conclusi))
+            print('Esegui ora `stato` per la verifica completa e le discordanze.')
+            return 0
+        time.sleep(args.ogni)
+
+
 def cmd_prossimo(args):
     righe = leggi(args.registro)
     candidati = [r for r in righe if r.get('stato') in ('da-fare', 'in-corso')]
@@ -263,6 +320,13 @@ def main():
     a.add_argument('--radice', default='.', help='radice a cui sono relativi id e artefatti')
     a.add_argument('--soglia', type=int, default=SOGLIA_BYTE, help='byte minimi di un artefatto valido')
     a.set_defaults(func=cmd_stato)
+
+    w = sub.add_parser('attendi', help='osserva finche' + chr(39) + 'il lavoro non si ferma')
+    w.add_argument('registro')
+    w.add_argument('--radice', default='.')
+    w.add_argument('--ogni', type=int, default=30, help='secondi fra un controllo e il successivo')
+    w.add_argument('--fermo', type=int, default=3, help='controlli senza progresso dopo i quali si dichiara finito')
+    w.set_defaults(func=cmd_attendi)
 
     b = sub.add_parser('prossimo', help='elenca i prossimi elementi da lavorare')
     b.add_argument('registro')
