@@ -291,3 +291,10 @@ Si configura in Claude Desktop puntandolo a una cartella vault. Una volta colleg
 - Le quattro sezioni H2 fisse delle pagine Capability (`## Overview`, `## Technologies & tools`, `## Responsibilities & operational scope`, `## Projects & evidence`) sono invariate per contratto: lo script di export presuppone esattamente questa struttura.
 - Mai modificare a mano il diario `.md`: rigenerare sempre tramite `sync_diary_md.py` come descritto nella sezione dedicata sopra.
 - Mantenere allineate le due liste `.gitignore` e `.graphifyignore`: quando si aggiunge o rimuove un pattern in una delle due, replicarlo nell'altra. L'unica differenza intenzionale e' `_intermediate/`, presente solo in `.gitignore` (esclusione per privacy) e volutamente assente in `.graphifyignore` (graphify deve indicizzare i sorgenti sanitizzati in `_intermediate/src/`).
+
+Norme caricate su richiesta, una riga per situazione con le parole con cui si presenta, così che il caricamento non dipenda dal ricordare che la norma esista.
+
+- `git worktree list` mostra più di un albero, se ne crea o se ne rimuove uno, si deve decidere da dove leggere la memoria versionata: skill `alberi-di-lavoro`.
+- Un recupero web fallisce con 403 o con una pagina di verifica anti-bot, la fonte sta su Reddit o su Discord, serve la trascrizione di un video, si sta per annotare una fonte non letta: skill `fonti-non-recuperabili`.
+- Si scrive o si valuta una prova automatica, si chiude un difetto, una verifica manuale smentisce una suite verde, si sta per dichiarare completo un intervento il cui scopo era un effetto misurabile: skill `prove-che-misurano`.
+- Si inizializza o si allinea il progetto, oppure cambia il modo in cui si prova e si rilascia, e va deciso come separare test e produzione: skill `separazione-ambienti`.
